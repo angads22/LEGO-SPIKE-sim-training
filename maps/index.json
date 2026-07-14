@@ -1,0 +1,8 @@
+{
+  "maps": [
+    { "file": "playground.json", "name": "Playground", "desc": "Open practice mat with a gentle line, three color zones, and two obstacles." },
+    { "file": "line-track.json", "name": "Line Track", "desc": "Closed black line loop — perfect for line-following programs." },
+    { "file": "fll-table.json", "name": "FLL Table", "desc": "Competition-style table with a Base, three mission zones, and a detour wall." },
+    { "file": "maze.json", "name": "Maze", "desc": "Escape from the bottom-left to the green Goal using the distance sensor." }
+  ]
+}

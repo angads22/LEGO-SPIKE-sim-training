@@ -1,0 +1,9 @@
+{
+  "challenges": [
+    {
+      "file": "color-push.json",
+      "name": "Color Courier",
+      "blurb": "Line-follow the S-curve and push each crate into its matching bin: yellow & green up to the Left Bin, red & blue down to the Right Bin."
+    }
+  ]
+}

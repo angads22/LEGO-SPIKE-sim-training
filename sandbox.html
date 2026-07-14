@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>SpikeSim — Physics Sandbox</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏎️</text></svg>">
+  <link rel="stylesheet" href="css/sandbox.css">
+
+  <!-- three.js as ES module (offline, vendored) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/three.module.js",
+      "three/addons/": "./vendor/three/addons/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header id="toolbar">
+    <div class="brand"><span class="brand-mark">🏎️</span><span class="brand-name">SpikeSim</span></div>
+
+    <!-- Mode group: Drive is live; Build/Race are Stage-1 stubs -->
+    <div class="group modes" role="group" aria-label="Mode">
+      <button id="mode-drive" class="mode-btn active" type="button" title="Drive vehicles with real physics">Drive</button>
+      <button id="mode-build" class="mode-btn" type="button" title="Snap-together builder (coming soon)">Build</button>
+      <button id="mode-race"  class="mode-btn" type="button" title="Race &amp; lap timing (coming soon)">Race</button>
+    </div>
+
+    <span class="divider" aria-hidden="true"></span>
+
+    <!-- Vehicle picker: one click switches instantly -->
+    <div class="group vehicles" role="group" aria-label="Vehicle">
+      <button id="veh-robot" class="veh-btn" type="button" title="Robot — differential drive (keys: W/S + A/D)">
+        <span class="veh-icon">🤖</span><span class="veh-label">Robot</span>
+      </button>
+      <button id="veh-racecar" class="veh-btn active" type="button" title="Race Car — arrows to drive, Space to drift">
+        <span class="veh-icon">🏎️</span><span class="veh-label">Race Car</span>
+      </button>
+      <button id="veh-slotcar" class="veh-btn" type="button" title="Slot Car — throttle only, brake into the bends!">
+        <span class="veh-icon">🚗</span><span class="veh-label">Slot Car</span>
+      </button>
+    </div>
+
+    <span class="divider" aria-hidden="true"></span>
+
+    <button id="btn-reset" class="tool-btn" type="button" title="Put the vehicle back at the start">⟲ Reset</button>
+
+    <span class="spacer"></span>
+
+    <!-- View tabs + camera controls -->
+    <div class="group tabs" role="group" aria-label="View">
+      <button id="tab-2d" class="tab-btn active" type="button" title="Top-down 2D view">2D</button>
+      <button id="tab-3d" class="tab-btn" type="button" title="3D chase view">3D</button>
+    </div>
+    <button id="btn-fit" class="tool-btn" type="button" title="Fit the arena in view">⤢ Fit</button>
+    <button id="btn-follow" class="tool-btn toggle active" type="button" title="Camera follows the active vehicle">🎥 Follow</button>
+
+    <a id="link-legacy" class="tool-btn link" href="legacy.html" title="Open the SPIKE coding app (blocks / Python)">Robot Lab (code) ↗</a>
+  </header>
+
+  <main id="stage">
+    <canvas id="canvas-2d"></canvas>
+    <div id="view3d-host" class="hidden"></div>
+
+    <!-- Speed HUD -->
+    <div id="hud" class="hud" aria-live="off">
+      <div class="hud-speed"><span id="hud-kmh">0</span><span class="hud-unit">km/h</span></div>
+      <div class="hud-sub"><span id="hud-mps">0.0</span> m/s <span id="hud-flag" class="hud-flag hidden">OFF TRACK</span></div>
+    </div>
+
+    <!-- On-screen pedals (drive mode) -->
+    <div id="pedals" class="pedals">
+      <div class="pedal-cluster steer">
+        <button id="pedal-left"  class="pedal" type="button" tabindex="-1" aria-label="Steer left">◀</button>
+        <button id="pedal-right" class="pedal" type="button" tabindex="-1" aria-label="Steer right">▶</button>
+      </div>
+      <div class="pedal-cluster drive">
+        <button id="pedal-throttle" class="pedal go"   type="button" tabindex="-1" aria-label="Throttle">▲</button>
+        <button id="pedal-brake"    class="pedal stop" type="button" tabindex="-1" aria-label="Brake / reverse">▼</button>
+      </div>
+    </div>
+
+    <div id="hint" class="hint">Arrows / WASD to drive · Space to drift · Shift to boost</div>
+    <div id="toast" class="toast"></div>
+  </main>
+
+  <script type="module" src="js/sandbox.js"></script>
+</body>
+</html>

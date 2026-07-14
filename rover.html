@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rover Lab — program your robot friend</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Nunito:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#F5EFE4;height:100%;overflow:hidden}
+  a{color:#1F9A63;text-decoration:none}
+  a:hover{color:#158052}
+  ::selection{background:rgba(35,160,107,.20)}
+  @keyframes ledBlink{0%,45%{opacity:1}55%,100%{opacity:.3}}
+  @keyframes lampGlow{0%,100%{transform:scale(1);opacity:.9}50%{transform:scale(1.25);opacity:1}}
+  @keyframes popIn{0%{transform:scale(.86);opacity:0}100%{transform:scale(1);opacity:1}}
+  textarea::-webkit-scrollbar,[data-scroll]::-webkit-scrollbar{width:10px;height:10px}
+  textarea::-webkit-scrollbar-thumb,[data-scroll]::-webkit-scrollbar-thumb{background:rgba(180,160,130,.5);border:3px solid transparent;background-clip:padding-box;border-radius:8px}
+  textarea::-webkit-scrollbar-track,[data-scroll]::-webkit-scrollbar-track{background:transparent}
+  button{transition:transform .08s ease,box-shadow .08s ease,filter .12s ease}
+  button:active{transform:translateY(1px)}
+</style>
+</head>
+<body>
+<div id="root" data-screen-label="Robot Playground" style="--ph:#23A06B;--scan-op:0;position:fixed;inset:0;display:flex;flex-direction:column;background:#F5EFE4;font-family:'Nunito',system-ui,sans-serif;color:#4A403A;overflow:hidden;">
+
+  <!-- ══════════ TOP BAR ══════════ -->
+  <div style="flex:none;height:76px;display:flex;align-items:stretch;background:#FFFFFF;border-bottom:1px solid #EAE0CE;box-shadow:0 2px 10px rgba(140,110,70,.06);position:relative;z-index:5;">
+
+    <!-- brand -->
+    <div style="display:flex;align-items:center;gap:14px;padding:0 24px;border-right:1px solid #F0E8D8;">
+      <div style="width:46px;height:46px;border-radius:14px;background:linear-gradient(160deg,#2CB57E,#1F9866);box-shadow:0 4px 10px rgba(31,152,102,.32),0 1px 0 rgba(255,255,255,.4) inset;display:flex;align-items:center;justify-content:center;position:relative;">
+        <span style="position:absolute;top:5px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:#fff;box-shadow:0 -3px 0 rgba(255,255,255,.5);"></span>
+        <span style="position:absolute;top:9px;width:18px;height:2px;background:rgba(255,255,255,.55);border-radius:2px;"></span>
+        <span style="display:flex;gap:6px;margin-top:7px;"><span style="width:6px;height:6px;border-radius:50%;background:#fff;"></span><span style="width:6px;height:6px;border-radius:50%;background:#fff;"></span></span>
+      </div>
+      <div style="display:flex;flex-direction:column;line-height:1.05;">
+        <div style="font-family:'Fredoka';font-weight:600;font-size:22px;letter-spacing:.2px;color:#3A322C;">Rover Lab</div>
+        <div style="font-family:'Nunito';font-weight:600;font-size:11px;letter-spacing:.2px;color:#A89C8B;margin-top:3px;">program your robot friend</div>
+      </div>
+      <div style="margin-left:6px;display:flex;align-items:center;gap:7px;padding:6px 11px;background:#F5F9F0;border:1px solid #DCEBCF;border-radius:20px;font-family:'Fredoka';font-weight:500;font-size:12px;color:#5C7A4A;">
+        <span style="width:8px;height:8px;border-radius:50%;background:#7CC24E;"></span> Meadow · Level 1
+      </div>
+    </div>
+
+    <!-- transport -->
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 18px;">
+      <button id="btn-run" title="Run the program" style="display:flex;align-items:center;gap:9px;height:48px;padding:0 24px;border-radius:14px;background:linear-gradient(180deg,#2CB57E,#1F9866);color:#fff;border:none;box-shadow:0 4px 0 #167A4E,0 7px 14px rgba(31,152,102,.35);font-family:'Fredoka';font-weight:600;font-size:16px;letter-spacing:.3px;cursor:pointer;">
+        <span id="run-led" style="width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.85);"></span>
+        <span style="font-size:12px;">&#9654;</span> Run
+      </button>
+      <button id="btn-step" title="Do one step" style="display:flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:14px;background:#fff;color:#5A5049;border:1px solid #E8DECC;box-shadow:0 3px 0 #EFE6D6,0 4px 9px rgba(140,110,70,.08);font-family:'Fredoka';font-weight:500;font-size:15px;cursor:pointer;">
+        <span style="font-size:12px;color:var(--ph,#23A06B);">&#9646;&#9654;</span> Step
+      </button>
+      <button id="btn-pause" title="Pause" style="display:flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:14px;background:#fff;color:#5A5049;border:1px solid #E8DECC;box-shadow:0 3px 0 #EFE6D6,0 4px 9px rgba(140,110,70,.08);font-family:'Fredoka';font-weight:500;font-size:15px;cursor:pointer;">
+        <span style="font-size:13px;color:#E9A23C;">&#9208;</span> Pause
+      </button>
+      <div style="width:1px;height:30px;background:#EDE3D2;margin:0 4px;"></div>
+      <button id="btn-reset" title="Start over" style="display:flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:14px;background:#fff;color:#5A5049;border:1px solid #E8DECC;box-shadow:0 3px 0 #EFE6D6,0 4px 9px rgba(140,110,70,.08);font-family:'Fredoka';font-weight:500;font-size:15px;cursor:pointer;">
+        <span style="font-size:15px;color:#EE7A5A;">&#8635;</span> Reset
+      </button>
+    </div>
+
+    <!-- status cluster -->
+    <div style="display:flex;align-items:center;gap:20px;padding:0 24px;border-left:1px solid #F0E8D8;">
+      <div style="display:flex;flex-direction:column;align-items:flex-start;gap:6px;">
+        <span style="font-family:'Nunito';font-weight:700;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:#B0A491;">Signal</span>
+        <div style="display:flex;gap:3px;align-items:flex-end;height:16px;">
+          <span style="width:4px;height:6px;background:var(--ph,#23A06B);border-radius:2px;"></span>
+          <span style="width:4px;height:9px;background:var(--ph,#23A06B);border-radius:2px;"></span>
+          <span style="width:4px;height:12px;background:var(--ph,#23A06B);border-radius:2px;"></span>
+          <span style="width:4px;height:15px;background:var(--ph,#23A06B);opacity:.45;border-radius:2px;"></span>
+          <span style="width:4px;height:16px;background:#E4DAC8;border-radius:2px;"></span>
+        </div>
+      </div>
+      <div style="width:1px;height:34px;background:#EDE3D2;"></div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        <span style="font-family:'Nunito';font-weight:700;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:#B0A491;">Battery</span>
+        <div style="width:70px;height:14px;border:1.5px solid #E4DAC8;border-radius:7px;padding:2px;position:relative;background:#F7F2E9;">
+          <div id="pwr-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#7CC24E,var(--ph,#23A06B));border-radius:5px;transition:width .3s;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ MAIN ══════════ -->
+  <div style="flex:1;display:flex;min-height:0;background:#F5EFE4;">
+
+    <!-- LEFT: editor -->
+    <div style="flex:none;width:428px;min-width:360px;display:flex;flex-direction:column;background:#FFFFFF;border-right:1px solid #EAE0CE;">
+      <!-- editor header: mode toggle + examples -->
+      <div style="flex:none;min-height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#FBF7EE;border-bottom:1px solid #EFE6D5;flex-wrap:wrap;">
+        <div style="display:flex;background:#F1EADB;border:1px solid #E6DBC7;border-radius:11px;padding:3px;gap:3px;">
+          <button id="mode-blocks" style="display:flex;align-items:center;gap:6px;padding:7px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:13px;cursor:pointer;"><span style="font-size:12px;">&#9638;</span> Blocks</button>
+          <button id="mode-py" style="display:flex;align-items:center;gap:6px;padding:7px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'JetBrains Mono';font-weight:700;font-size:12px;cursor:pointer;">&lt;/&gt; Python</button>
+        </div>
+        <div style="flex:1;"></div>
+        <span style="font-family:'Nunito';font-weight:700;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:#B0A491;">Examples</span>
+        <button id="tab-sweep" style="padding:6px 11px;background:#fff;border:1px solid #E8DECC;border-radius:9px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Sweep</button>
+        <button id="tab-box" style="padding:6px 11px;background:#fff;border:1px solid #E8DECC;border-radius:9px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Square</button>
+        <button id="tab-zig" style="padding:6px 11px;background:#fff;border:1px solid #E8DECC;border-radius:9px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Zigzag</button>
+      </div>
+
+      <!-- editor body: blocks workspace OR python code -->
+      <div style="flex:1;min-height:0;position:relative;">
+        <div id="workspace" data-scroll style="position:absolute;inset:0;overflow:auto;padding:14px 14px 6px;background:#FDFBF6;"></div>
+        <div id="codePane" style="position:absolute;inset:0;display:none;background:#FDFBF6;">
+          <div id="gutter" style="flex:none;width:46px;overflow:hidden;padding:14px 0;text-align:right;white-space:pre;font-family:'JetBrains Mono';font-size:13px;line-height:20px;color:#C4B48F;user-select:none;border-right:1px solid #F0E8D6;background:#F7F1E4;"></div>
+          <div style="flex:1;position:relative;min-width:0;">
+            <pre id="hl" aria-hidden="true" style="position:absolute;inset:0;margin:0;padding:14px 16px;font-family:'JetBrains Mono';font-size:13px;line-height:20px;white-space:pre;overflow:hidden;color:#7A6E5E;pointer-events:none;"></pre>
+            <textarea id="ta" spellcheck="false" wrap="off" style="position:absolute;inset:0;margin:0;padding:14px 16px;font-family:'JetBrains Mono';font-size:13px;line-height:20px;white-space:pre;background:transparent;color:transparent;caret-color:var(--ph,#23A06B);border:none;outline:none;resize:none;overflow:auto;"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- bottom: block palette OR python help -->
+      <div style="flex:none;padding:12px 14px 14px;background:#FBF7EE;border-top:1px solid #EFE6D5;">
+        <div id="paletteWrap">
+          <div style="font-family:'Fredoka';font-weight:500;font-size:12px;color:#8C8073;margin-bottom:9px;">Click a block to add it</div>
+          <div id="palette" style="display:flex;flex-wrap:wrap;gap:7px;"></div>
+        </div>
+        <div id="pyHelp" style="display:none;">
+          <div style="font-family:'Fredoka';font-weight:500;font-size:12px;color:#8C8073;margin-bottom:9px;">Commands you can type</div>
+          <div style="display:flex;flex-wrap:wrap;gap:7px;font-family:'JetBrains Mono';font-size:10.5px;">
+            <span style="color:#1F7A50;background:#EAF6EE;border:1px solid #C4E3CE;border-radius:8px;padding:4px 9px;">forward(<i style="color:#3E8FC7;font-style:normal;">n</i>)</span>
+            <span style="color:#1F7A50;background:#EAF6EE;border:1px solid #C4E3CE;border-radius:8px;padding:4px 9px;">back(<i style="color:#3E8FC7;font-style:normal;">n</i>)</span>
+            <span style="color:#B9791F;background:#FBF1DE;border:1px solid #F0DDB8;border-radius:8px;padding:4px 9px;">turn_left()</span>
+            <span style="color:#B9791F;background:#FBF1DE;border:1px solid #F0DDB8;border-radius:8px;padding:4px 9px;">turn_right()</span>
+            <span style="color:#2E7BB0;background:#E7F2FB;border:1px solid #C6E0F2;border-radius:8px;padding:4px 9px;">scan()</span>
+            <span style="color:#5F7E96;background:#EEF3F7;border:1px solid #D6E2EC;border-radius:8px;padding:4px 9px;">wait(<i style="color:#3E8FC7;font-style:normal;">n</i>)</span>
+            <span style="color:#7A5BB0;background:#F1ECF9;border:1px solid #DDCEF0;border-radius:8px;padding:4px 9px;">pen_down() / pen_up()</span>
+            <span style="color:#BD5B78;background:#FBEEF2;border:1px solid #F1D6DF;border-radius:8px;padding:4px 9px;">led(<i style="color:#C8822A;font-style:normal;">"cyan"</i>)</span>
+            <span style="color:#5A4FB0;background:#EEEBFA;border:1px solid #D4CCF2;border-radius:8px;padding:4px 9px;">repeat(<i style="color:#3E8FC7;font-style:normal;">n</i>):</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: viewport + console -->
+    <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+
+      <!-- viewport -->
+      <div style="flex:1;min-height:0;display:flex;flex-direction:column;background:#F5EFE4;border-bottom:1px solid #EAE0CE;">
+        <div style="flex:none;height:46px;display:flex;align-items:center;gap:14px;padding:0 16px;background:#FFFFFF;border-bottom:1px solid #EFE6D5;">
+          <span style="font-family:'Fredoka';font-weight:600;font-size:14px;color:#5A5049;">&#9752; Playground</span>
+          <div style="width:1px;height:22px;background:#EDE3D2;"></div>
+          <div style="display:flex;background:#F5EFE4;border:1px solid #E8DECC;border-radius:10px;overflow:hidden;padding:2px;gap:2px;">
+            <button id="view-top" style="padding:6px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Top view</button>
+            <button id="view-iso" style="padding:6px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">3D view</button>
+          </div>
+          <div style="flex:1;"></div>
+          <span style="font-family:'Nunito';font-weight:600;font-size:12px;color:#A89C8B;">Reach the &#9733; star!</span>
+        </div>
+        <div style="flex:1;position:relative;min-height:0;background:#F7F1E6;">
+          <canvas id="canvas" style="position:absolute;inset:0;width:100%;height:100%;display:block;"></canvas>
+          <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 48%,rgba(0,0,0,0) 60%,rgba(150,120,70,.07) 100%);"></div>
+          <div style="position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(180deg,rgba(0,0,0,0) 0 2px,rgba(120,90,50,.5) 3px);opacity:var(--scan-op,0);mix-blend-mode:multiply;"></div>
+          <!-- status HUD -->
+          <div style="position:absolute;left:18px;bottom:16px;display:flex;align-items:center;gap:11px;padding:8px 15px;background:rgba(255,255,255,.9);border:1px solid #ECE2D0;border-radius:12px;box-shadow:0 4px 14px rgba(140,110,70,.12);">
+            <span id="status-lamp" style="width:11px;height:11px;border-radius:50%;background:var(--ph,#23A06B);"></span>
+            <span id="hud-status" style="font-family:'Fredoka';font-weight:600;font-size:14px;color:#4A403A;">Ready</span>
+          </div>
+          <!-- coords HUD -->
+          <div style="position:absolute;left:18px;top:16px;display:flex;gap:16px;padding:9px 15px;background:rgba(255,255,255,.9);border:1px solid #ECE2D0;border-radius:12px;box-shadow:0 4px 14px rgba(140,110,70,.1);font-family:'JetBrains Mono';font-size:12px;color:#8C8073;">
+            <span>x <b id="hud-x" style="color:var(--ph,#23A06B);">1</b></span>
+            <span>y <b id="hud-y" style="color:var(--ph,#23A06B);">6</b></span>
+            <span>facing <b id="hud-h" style="color:var(--ph,#23A06B);">N&#9650;</b></span>
+            <span>step <b id="hud-step" style="color:var(--ph,#23A06B);">0/0</b></span>
+          </div>
+          <!-- legend -->
+          <div style="position:absolute;right:18px;top:16px;display:flex;flex-direction:column;gap:7px;padding:11px 14px;background:rgba(255,255,255,.9);border:1px solid #ECE2D0;border-radius:12px;box-shadow:0 4px 14px rgba(140,110,70,.1);font-family:'Nunito';font-weight:600;font-size:11.5px;color:#8C8073;">
+            <div style="display:flex;align-items:center;gap:9px;"><span style="color:var(--ph,#23A06B);font-size:12px;">&#9635;</span> Rover</div>
+            <div style="display:flex;align-items:center;gap:9px;"><span style="color:var(--ph,#23A06B);font-size:13px;">&#9733;</span> Goal</div>
+            <div style="display:flex;align-items:center;gap:9px;"><span style="color:#D29B72;font-size:12px;">&#9679;</span> Rock</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- console -->
+      <div style="flex:none;height:198px;display:flex;flex-direction:column;background:#FFFFFF;">
+        <div style="flex:none;height:40px;display:flex;align-items:center;gap:12px;padding:0 16px;background:#FBF7EE;border-bottom:1px solid #EFE6D5;">
+          <span style="font-family:'Fredoka';font-weight:600;font-size:13.5px;color:#5A5049;">&#9993; Activity</span>
+          <div style="flex:1;height:1px;background:#F0E8D6;"></div>
+          <button id="btn-clear" style="background:#fff;border:1px solid #E8DECC;border-radius:9px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:11px;padding:6px 13px;cursor:pointer;">Clear</button>
+        </div>
+        <div style="flex:1;position:relative;min-height:0;background:#FDFBF6;">
+          <div id="console" data-scroll style="position:absolute;inset:0;overflow:auto;padding:11px 16px;font-family:'JetBrains Mono';font-size:12px;line-height:18px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ FOOTER ══════════ -->
+  <div style="flex:none;height:30px;display:flex;align-items:center;justify-content:space-between;background:#FFFFFF;border-top:1px solid #EFE6D5;font-family:'Nunito';font-weight:600;font-size:11px;color:#B0A491;padding:0 16px;">
+    <div style="display:flex;gap:16px;align-items:center;">
+      <span>Rover Lab</span><span>&#183; have fun exploring!</span>
+    </div>
+    <div style="display:flex;gap:16px;align-items:center;"><span>Grid 12&#215;8</span><span style="display:flex;align-items:center;gap:6px;color:var(--ph,#23A06B);"><span style="width:7px;height:7px;border-radius:50%;background:var(--ph,#23A06B);"></span> Connected</span></div>
+  </div>
+</div>
+
+<script src="js/rover.js"></script>
+</body>
+</html>

@@ -1,0 +1,233 @@
+{
+  "name": "Color Courier",
+  "blurb": "Line-follow the S-curve and push each crate into its matching bin: yellow & green up to the Left Bin, red & blue down to the Right Bin.",
+  "brief": "You are the delivery robot on the S-curve route. Four crates are parked across the right edge of the line.\nYELLOW and GREEN crates go UP into the Left Bin. RED and BLUE crates go DOWN into the Right Bin.\nThe DOWN sensor (port E) follows the line. The FRONT sensor (port B) pokes just past the bumper: while you are touching a crate, color_sensor.color(FRONT) returns that crate’s color.\nThe starter code already line-follows — press Run and watch it plow the crates. Then teach it to sense, decide, and push.",
+  "map": {
+    "name": "Color Courier",
+    "widthCm": 236,
+    "heightCm": 114,
+    "background": "#e9e5da",
+    "border": true,
+    "walls": [],
+    "lines": [
+      {
+        "color": "#111111",
+        "widthCm": 2.5,
+        "points": [
+          [
+            14,
+            44
+          ],
+          [
+            36,
+            44
+          ],
+          [
+            48,
+            40
+          ],
+          [
+            60,
+            35
+          ],
+          [
+            72,
+            30
+          ],
+          [
+            84,
+            28
+          ],
+          [
+            124,
+            28
+          ],
+          [
+            134,
+            31
+          ],
+          [
+            143,
+            37
+          ],
+          [
+            150,
+            46
+          ],
+          [
+            157,
+            56
+          ],
+          [
+            164,
+            66
+          ],
+          [
+            172,
+            75
+          ],
+          [
+            181,
+            81
+          ],
+          [
+            192,
+            85
+          ],
+          [
+            204,
+            86
+          ],
+          [
+            226,
+            86
+          ]
+        ]
+      }
+    ],
+    "zones": [
+      {
+        "x": 96,
+        "y": 0,
+        "w": 30,
+        "h": 22,
+        "color": "#cfe4f0",
+        "label": "Left Bin"
+      },
+      {
+        "x": 198,
+        "y": 92,
+        "w": 30,
+        "h": 22,
+        "color": "#f0e0c8",
+        "label": "Right Bin"
+      }
+    ],
+    "obstacles": [
+      {
+        "x": 88,
+        "y": 25,
+        "w": 8,
+        "h": 8,
+        "heightCm": 8,
+        "color": "#f5c832",
+        "movable": true
+      },
+      {
+        "x": 110,
+        "y": 25,
+        "w": 8,
+        "h": 8,
+        "heightCm": 8,
+        "color": "#3ca558",
+        "movable": true
+      },
+      {
+        "x": 194,
+        "y": 82.5,
+        "w": 8,
+        "h": 8,
+        "heightCm": 8,
+        "color": "#d43c37",
+        "movable": true
+      },
+      {
+        "x": 214,
+        "y": 83,
+        "w": 8,
+        "h": 8,
+        "heightCm": 8,
+        "color": "#2850dc",
+        "movable": true
+      }
+    ],
+    "start": {
+      "x": 20,
+      "y": 44,
+      "headingDeg": 0
+    }
+  },
+  "robot": {
+    "name": "Color Courier Bot",
+    "chassis": {
+      "lengthCm": 14,
+      "widthCm": 11,
+      "heightCm": 9,
+      "color": "#f5c518"
+    },
+    "drive": {
+      "leftPort": "C",
+      "rightPort": "D",
+      "wheelDiameterCm": 5.6,
+      "trackWidthCm": 11.2,
+      "maxDegPerSec": 970,
+      "accelDegPerSec2": 4000
+    },
+    "devices": [
+      {
+        "port": "C",
+        "type": "motor",
+        "role": "drive-left"
+      },
+      {
+        "port": "D",
+        "type": "motor",
+        "role": "drive-right"
+      },
+      {
+        "port": "E",
+        "type": "color",
+        "x": 6,
+        "y": 0
+      },
+      {
+        "port": "B",
+        "type": "color",
+        "x": 8.5,
+        "y": 0
+      },
+      {
+        "port": "A",
+        "type": "distance",
+        "x": 7.5,
+        "y": 0,
+        "headingDeg": 0
+      }
+    ]
+  },
+  "starterCode": "# Color Courier — starter code (SPIKE 3 style)\n# The line follower below already works: press Run and watch it drive the\n# S-curve. Your mission: fill in the TODOs so every crate lands in its bin.\n#   yellow + green  ->  Left Bin  (top of the mat)\n#   red + blue      ->  Right Bin (bottom of the mat)\n\nfrom hub import port\nimport runloop, motor_pair\nimport color_sensor, color\n\n# Drive motors: C = left wheel, D = right wheel.\nmotor_pair.pair(motor_pair.PAIR_1, port.C, port.D)\n\nDOWN = port.E    # color sensor pointing at the mat (line following)\nFRONT = port.B   # color sensor at the bumper (reads a crate's color on touch)\nTARGET = 50      # reflection at the line's edge (mat ~90, line ~7)\nGAIN = 0.5       # steering strength: steering = error * GAIN\n\n\nasync def push_left():\n    # TODO: arc-push the crate UP into the Left Bin, then curve back to the\n    # line. Build it from wheel-degree chunks and tune the numbers, e.g.:\n    #   await motor_pair.move_for_degrees(motor_pair.PAIR_1, 80, -30, velocity=200)\n    pass\n\n\nasync def push_right():\n    # TODO: arc-push the crate DOWN into the Right Bin, then curve back to\n    # the line. (Positive steering arcs right/down.)\n    pass\n\n\nasync def mainp():\n    while True:\n        # TODO: read the FRONT sensor and branch on the crate color:\n        #   yellow or green -> await push_left()\n        #   red or blue     -> await push_right()\n        # seen = color_sensor.color(FRONT)\n\n        # P-controller line follow on the DOWN sensor (this part works).\n        reflection = color_sensor.reflection(DOWN)\n        error = reflection - TARGET\n        motor_pair.move(motor_pair.PAIR_1, int(error * GAIN), velocity=200)\n\n        await runloop.sleep_ms(20)   # let the simulator advance between readings\n\nrunloop.run(mainp())\n",
+  "goals": [
+    {
+      "type": "movable-in-zone",
+      "color": "yellow",
+      "zone": "Left Bin",
+      "label": "Yellow crate delivered to the Left Bin"
+    },
+    {
+      "type": "movable-in-zone",
+      "color": "green",
+      "zone": "Left Bin",
+      "label": "Green crate delivered to the Left Bin"
+    },
+    {
+      "type": "movable-in-zone",
+      "color": "red",
+      "zone": "Right Bin",
+      "label": "Red crate delivered to the Right Bin"
+    },
+    {
+      "type": "movable-in-zone",
+      "color": "blue",
+      "zone": "Right Bin",
+      "label": "Blue crate delivered to the Right Bin"
+    }
+  ],
+  "hints": [
+    "Press Run and just watch: the robot follows the line and bumps into the crates. While the bumper touches one, color_sensor.color(FRONT) returns that crate’s color — try print(color_sensor.color(FRONT)) inside the loop.",
+    "Branch on the color module’s constants each time around the loop: seen = color_sensor.color(FRONT), then if seen == color.YELLOW or seen == color.GREEN: await push_left() — and color.RED / color.BLUE to push_right().",
+    "Remember the await! push_left() and push_right() are async — “await push_left()” makes the push finish before line-following resumes.",
+    "Steering sign: POSITIVE steering arcs RIGHT (down the mat, toward the Right Bin); NEGATIVE arcs LEFT (up, toward the Left Bin). Gentle steering (±20…±40) keeps the crate on your bumper; sharp turns (±60+) slide it off.",
+    "Build a push from wheel-degree chunks like the classic passive-push pattern: await motor_pair.move_for_degrees(motor_pair.PAIR_1, 80, -30, velocity=200), then ~150 straight, then arc back the other way. 360 wheel degrees ≈ 17.6 cm of travel, and a crate only needs ~5–8 cm of sideways shove.",
+    "After a push you are off the line. End push_left()/push_right() with an arc that leaves the robot pointing roughly east again so the P-controller can re-catch the line’s edge. If a crate goes astray, press ⟲ Reset — the crates return and the goals re-arm."
+  ]
+}

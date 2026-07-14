@@ -1,0 +1,25 @@
+{
+  "name": "Playground",
+  "widthCm": 236,
+  "heightCm": 114,
+  "background": "#f2ead9",
+  "border": true,
+  "walls": [],
+  "lines": [
+    {
+      "color": "#111111",
+      "widthCm": 2.5,
+      "points": [[25, 62], [55, 56], [90, 50], [125, 46], [160, 44], [190, 46], [215, 52]]
+    }
+  ],
+  "zones": [
+    { "x": 30, "y": 12, "w": 25, "h": 25, "color": "#3b6fd4", "label": "Blue" },
+    { "x": 105, "y": 12, "w": 25, "h": 25, "color": "#2fae53", "label": "Green" },
+    { "x": 195, "y": 80, "w": 25, "h": 25, "color": "#d64545", "label": "Red" }
+  ],
+  "obstacles": [
+    { "x": 140, "y": 72, "w": 10, "h": 10, "heightCm": 10, "color": "#8a5a34", "movable": false },
+    { "x": 70, "y": 26, "w": 10, "h": 12, "heightCm": 12, "color": "#5b6d8f", "movable": false }
+  ],
+  "start": { "x": 25, "y": 90, "headingDeg": 0 }
+}

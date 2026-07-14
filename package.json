@@ -1,0 +1,20 @@
+{
+  "name": "spikesim",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "blockly": "^13.1.1",
+    "planck": "^1.5.0",
+    "pyodide": "^314.0.2",
+    "skulpt": "^1.2.0",
+    "three": "^0.185.1"
+  }
+}

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#F2F5F9">
+  <title>SpikeSim — Robot Simulator</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+  <link rel="stylesheet" href="css/app.css">
+
+  <!-- Vendored UMD libraries (globals: Blockly, python, Sk) -->
+  <script src="vendor/blockly/blockly_compressed.js"></script>
+  <script src="vendor/blockly/blocks_compressed.js"></script>
+  <script src="vendor/blockly/msg/en.js"></script>
+  <script src="vendor/blockly/python_compressed.js"></script>
+  <script src="vendor/skulpt/skulpt.min.js"></script>
+  <script src="vendor/skulpt/skulpt-stdlib.js"></script>
+
+  <!-- three.js as ES module -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "./vendor/three/three.module.js",
+      "three/addons/": "./vendor/three/addons/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header id="toolbar">
+    <div class="brand">🤖 SpikeSim</div>
+    <button id="btn-run" class="primary" title="Run the active editor's program">▶ Run</button>
+    <button id="btn-stop" disabled title="Stop the running program">■ Stop</button>
+    <button id="btn-reset" title="Put the robot back at the start position">⟲ Reset</button>
+    <label class="speed">Speed
+      <input id="speed-slider" type="range" min="-2" max="3" step="0.25" value="0">
+      <span id="speed-label">1×</span>
+    </label>
+    <span class="spacer"></span>
+    <label>Map <select id="sel-map"></select></label>
+    <button id="btn-edit-map" title="Toggle map editor">✏ Edit map</button>
+    <label>Examples
+      <select id="sel-example"><option value="">Load example…</option></select>
+    </label>
+    <label>Challenge
+      <select id="sel-challenge"><option value="">Pick a challenge…</option></select>
+    </label>
+    <button id="btn-help" title="Quick start, coding guide, tutorial, and challenge help">❓ Help</button>
+    <a class="tool-btn link" href="sandbox.html" title="Physics vehicle sandbox (cars, slot cars)" style="text-decoration:none;">🏎 Sandbox ↗</a>
+    <a class="tool-btn link" href="rover.html" title="Rover Lab — grid robot (blocks + Python)" style="text-decoration:none;">🤖 Rover Lab ↗</a>
+  </header>
+
+  <main>
+    <section id="editor-pane" class="panel">
+      <nav class="tabs">
+        <button id="tab-blocks" class="tab active">Blocks</button>
+        <button id="tab-python" class="tab">Python</button>
+        <span id="runtime-badge" class="runtime-badge" title="Which Python dialect ▶ Run will use — see ❓ Help → Coding"></span>
+      </nav>
+      <div id="blocks-pane" class="pane active">
+        <div id="blockly-host"></div>
+        <div id="python-preview-wrap">
+          <div class="preview-title">Python from your blocks</div>
+          <pre id="python-preview"># drag blocks to see the Python they make</pre>
+        </div>
+      </div>
+      <div id="python-pane" class="pane">
+        <textarea id="python-editor" spellcheck="false" placeholder="# SPIKE-style Python — press Run!"></textarea>
+      </div>
+    </section>
+
+    <section id="sim-pane" class="panel">
+      <nav class="tabs">
+        <button id="tab-2d" class="tab active">2D</button>
+        <button id="tab-3d" class="tab">3D</button>
+        <button id="tab-build" class="tab">Build</button>
+        <span class="spacer"></span>
+        <button id="btn-fit" title="Fit map in view">⤢ Fit</button>
+        <button id="btn-follow" class="toggle" title="Camera follows the robot (3D)">🎥 Follow</button>
+      </nav>
+      <div id="pane-2d" class="pane active">
+        <div id="mapeditor-toolbar" class="hidden"></div>
+        <canvas id="canvas-2d"></canvas>
+      </div>
+      <div id="pane-3d" class="pane"><div id="view3d-host"></div></div>
+      <div id="pane-build" class="pane">
+        <div id="build-subtabs">
+          <button id="subtab-3d" class="subtab active" title="Grab parts and place them on your bot in 3D">🧱 3D Builder</button>
+          <button id="subtab-form" class="subtab" title="All the numbers: chassis, ports, positions">⚙ Advanced form</button>
+        </div>
+        <div id="builder3d-host"></div>
+        <div id="builder-host" class="hidden"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="status-row">
+      <span class="hub-label">HUB</span>
+      <div id="hub-matrix" title="Hub 5×5 light matrix" aria-label="Hub light matrix"></div>
+      <div id="hub-display" title="Hub light-matrix text"></div>
+    </div>
+    <div id="console"></div>
+  </footer>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

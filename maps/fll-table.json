@@ -1,0 +1,23 @@
+{
+  "name": "FLL Table",
+  "widthCm": 236,
+  "heightCm": 114,
+  "background": "#efe9dc",
+  "border": true,
+  "walls": [
+    { "x1": 70, "y1": 74, "x2": 70, "y2": 114, "heightCm": 12 }
+  ],
+  "lines": [],
+  "zones": [
+    { "x": 4,   "y": 80, "w": 30, "h": 30, "color": "#2fae53", "label": "Base" },
+    { "x": 96,  "y": 10, "w": 24, "h": 20, "color": "#d64545", "label": "M1" },
+    { "x": 196, "y": 12, "w": 26, "h": 22, "color": "#3b6fd4", "label": "M2" },
+    { "x": 150, "y": 82, "w": 24, "h": 22, "color": "#e8c22e", "label": "M3" }
+  ],
+  "obstacles": [
+    { "x": 108, "y": 50, "w": 20, "h": 10, "heightCm": 10, "color": "#8a5a34", "movable": false },
+    { "x": 56,  "y": 16, "w": 10, "h": 10, "heightCm": 8,  "color": "#5b6d8f", "movable": false },
+    { "x": 186, "y": 58, "w": 10, "h": 10, "heightCm": 12, "color": "#7a4fb0", "movable": false }
+  ],
+  "start": { "x": 19, "y": 95, "headingDeg": 0 }
+}

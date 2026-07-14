@@ -1,0 +1,16 @@
+{
+  "python": [
+    { "file": "spike3_square.py", "name": "★ Drive a square (SPIKE 3)" },
+    { "file": "spike3_sensors.py", "name": "★ Sensor watch (SPIKE 3)" },
+    { "file": "spike3_line_follow.py", "name": "★ Line follower (SPIKE 3)" },
+    { "file": "spike3_light_show.py", "name": "★ Light + sound show (SPIKE 3)" },
+    { "file": "spike3_wander.py", "name": "★ Wander & avoid (SPIKE 3)" },
+    { "file": "drive_square.py", "name": "Drive a square (SPIKE 2)" },
+    { "file": "line_follow.py", "name": "Follow the line (SPIKE 2)" },
+    { "file": "maze_right_hand.py", "name": "Escape the maze (SPIKE 2)" },
+    { "file": "arm_demo.py", "name": "Arm demo (SPIKE 2)" }
+  ],
+  "blocks": [
+    { "file": "drive_square.json", "name": "Drive a square (blocks)" }
+  ]
+}
