@@ -1,17 +1,17 @@
 {
   "name": "spikesim",
   "version": "1.1.0",
-  "description": "",
+  "description": "LEGO SPIKE Prime-style robot simulator — blocks + Python, 2D/3D",
   "main": "electron-main.js",
   "bin": "desktop.js",
   "scripts": {
     "start": "node server.js",
     "build:exe": "pkg desktop.js --config package.json --targets node22-win-x64 --output dist/SpikeSim.exe",
-    "build:app": "electron-builder --win",
+    "build:app": "electron-builder --win -p never",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "angads22",
   "license": "ISC",
   "type": "commonjs",
   "pkg": {
