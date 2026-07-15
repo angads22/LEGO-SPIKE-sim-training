@@ -1,12 +1,13 @@
 {
   "name": "spikesim",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "",
-  "main": "server.js",
+  "main": "electron-main.js",
   "bin": "desktop.js",
   "scripts": {
     "start": "node server.js",
-    "build:exe": "pkg . --targets node22-win-x64 --output dist/SpikeSim.exe",
+    "build:exe": "pkg desktop.js --config package.json --targets node22-win-x64 --output dist/SpikeSim.exe",
+    "build:app": "electron-builder --win",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -32,8 +33,49 @@
     ],
     "outputPath": "dist"
   },
+  "build": {
+    "appId": "com.angads.spikesim",
+    "productName": "SpikeSim",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron-main.js",
+      "server.js",
+      "index.html",
+      "legacy.html",
+      "sandbox.html",
+      "rover.html",
+      "css/**",
+      "js/**",
+      "vendor/**",
+      "challenges/**",
+      "maps/**",
+      "models/**",
+      "examples/**"
+    ],
+    "asar": true,
+    "asarUnpack": [
+      "vendor/**"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
   "devDependencies": {
-    "@yao-pkg/pkg": "^6.21.0"
+    "@yao-pkg/pkg": "^6.21.0",
+    "electron": "^43.1.1",
+    "electron-builder": "^26.15.3"
   },
   "dependencies": {
     "blockly": "^13.1.1",

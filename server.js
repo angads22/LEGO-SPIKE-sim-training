@@ -55,5 +55,10 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`SpikeSim running at http://localhost:${PORT}`);
+  console.log(`SpikeSim running at http://localhost:${server.address().port}`);
 });
+
+// Export the http.Server so an embedder (electron-main.js) can wait for the
+// 'listening' event and read the actual bound port. Running standalone
+// (`node server.js`) still listens on PORT (default 8790) exactly as before.
+module.exports = server;

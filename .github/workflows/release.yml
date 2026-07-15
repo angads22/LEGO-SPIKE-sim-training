@@ -1,7 +1,7 @@
-name: Build and release SpikeSim.exe
+name: Build and release SpikeSim desktop app
 
-# Cut a release by pushing a tag like v1.0.0:
-#   git tag v1.0.0 && git push origin v1.0.0
+# Cut a release by pushing a tag like v1.1.0:
+#   git tag v1.1.0 && git push origin v1.1.0
 on:
   push:
     tags:
@@ -25,19 +25,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Windows exe
-        run: npm run build:exe
+      - name: Build Windows desktop app (Electron NSIS installer + portable)
+        run: npm run build:app
 
-      - name: Upload build artifact
+      - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SpikeSim-exe
-          path: dist/SpikeSim.exe
+          name: SpikeSim-desktop
+          path: dist/*.exe
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/SpikeSim.exe
+          # Ships the Electron installer + portable exe:
+          #   "SpikeSim Setup X.Y.Z.exe"  (NSIS installer — primary artifact)
+          #   "SpikeSim X.Y.Z.exe"        (portable, no install)
+          files: dist/*.exe
           fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
