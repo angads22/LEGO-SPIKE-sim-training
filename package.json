@@ -2,14 +2,39 @@
   "name": "spikesim",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
+  "bin": "desktop.js",
   "scripts": {
+    "start": "node server.js",
+    "build:exe": "pkg . --targets node22-win-x64 --output dist/SpikeSim.exe",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
+  "pkg": {
+    "assets": [
+      "index.html",
+      "legacy.html",
+      "sandbox.html",
+      "rover.html",
+      "css/**/*",
+      "js/**/*",
+      "vendor/**/*",
+      "challenges/**/*",
+      "maps/**/*",
+      "models/**/*",
+      "examples/**/*"
+    ],
+    "targets": [
+      "node22-win-x64"
+    ],
+    "outputPath": "dist"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^6.21.0"
+  },
   "dependencies": {
     "blockly": "^13.1.1",
     "planck": "^1.5.0",

@@ -644,7 +644,9 @@ function registerGenerators() {
   ];
 
   g['spike_distance'] = (block) => [
-    `(${portVar('distance', block.getFieldValue('PORT'))}.get_distance_cm() or 999)`,
+    // None = nothing in range -> 999; keep a real 0.0 cm reading (touching a
+    // wall) as 0.0 rather than letting `or` treat it as "nothing".
+    `((lambda d: 999 if d is None else d)(${portVar('distance', block.getFieldValue('PORT'))}.get_distance_cm()))`,
     python.Order.ATOMIC,
   ];
 

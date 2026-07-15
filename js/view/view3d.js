@@ -2131,11 +2131,13 @@ export class View3D {
         }
       }
 
-      // arm angle from state.attachments (clamp the VISUAL to a sane range)
+      // arm angle from state.attachments — use the raw motor angle so the 3D
+      // beam matches the 2D view exactly and a continuously-running attachment
+      // motor keeps spinning instead of freezing at a clamp.
       for (const port of Object.keys(this._arms)) {
         const a = st.attachments && st.attachments[port];
         if (a) {
-          const deg = THREE.MathUtils.clamp(a.angleDeg, -30, 120);
+          const deg = a.angleDeg || 0;
           this._arms[port].rotation.z = THREE.MathUtils.degToRad(deg);
         }
       }

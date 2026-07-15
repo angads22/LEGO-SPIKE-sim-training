@@ -7,7 +7,7 @@ from hub import port, light_matrix
 COLOR_NAMES = {
     color.RED: "red", color.GREEN: "green", color.BLUE: "blue",
     color.YELLOW: "yellow", color.WHITE: "white", color.BLACK: "black",
-    color.AZURE: "azure", color.MAGENTA: "magenta",
+    color.AZURE: "azure", color.PURPLE: "violet",
 }
 
 

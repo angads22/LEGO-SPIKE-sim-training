@@ -5,7 +5,17 @@ Code the robot with **Scratch-style blocks** or **real Python** (SPIKE v2-style 
 on a map in **2D and 3D**, draw your own maps, and build the robot with custom **attachments and
 sensors**.
 
-## Quick start
+## Download (Windows)
+
+Grab the latest **`SpikeSim.exe`** from the
+[**Releases**](https://github.com/angads22/LEGO-SPIKE-sim-training/releases) page.
+It's a single self-contained file — the whole app (Blockly, Skulpt, three.js, Pyodide)
+is bundled inside, so it runs **fully offline** with no Node install required.
+
+**Double-click `SpikeSim.exe`** — it starts the local server and opens your browser to
+`http://localhost:8790`. Close the console window to stop it.
+
+## Quick start (from source)
 
 ```
 double-click start.bat        (or: node server.js)

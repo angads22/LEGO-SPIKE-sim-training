@@ -21,7 +21,8 @@
   textarea::-webkit-scrollbar-thumb,[data-scroll]::-webkit-scrollbar-thumb{background:rgba(180,160,130,.5);border:3px solid transparent;background-clip:padding-box;border-radius:8px}
   textarea::-webkit-scrollbar-track,[data-scroll]::-webkit-scrollbar-track{background:transparent}
   button{transition:transform .08s ease,box-shadow .08s ease,filter .12s ease}
-  button:active{transform:translateY(1px)}
+  button.tbtn:active{transform:translateY(3px)}
+  button.tbtn-run:active{transform:translateY(4px)}
 </style>
 </head>
 <body>
@@ -48,18 +49,18 @@
 
     <!-- transport -->
     <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 18px;">
-      <button id="btn-run" title="Run the program" style="display:flex;align-items:center;gap:9px;height:48px;padding:0 24px;border-radius:14px;background:linear-gradient(180deg,#2CB57E,#1F9866);color:#fff;border:none;box-shadow:0 4px 0 #167A4E,0 7px 14px rgba(31,152,102,.35);font-family:'Fredoka';font-weight:600;font-size:16px;letter-spacing:.3px;cursor:pointer;">
-        <span id="run-led" style="width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.85);"></span>
+      <button id="btn-run" class="tbtn-run" title="Run the program" style="display:flex;align-items:center;gap:9px;height:48px;padding:0 24px;border-radius:14px;background:linear-gradient(180deg,#2CB57E,#1F9866);color:#fff;border:none;box-shadow:0 4px 0 #167A4E,0 7px 14px rgba(31,152,102,.35);font-family:'Fredoka';font-weight:600;font-size:16px;letter-spacing:.3px;cursor:pointer;">
+        <span id="runLed" style="width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.85);"></span>
         <span style="font-size:12px;">&#9654;</span> Run
       </button>
-      <button id="btn-step" title="Do one step" style="display:flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:14px;background:#fff;color:#5A5049;border:1px solid #E8DECC;box-shadow:0 3px 0 #EFE6D6,0 4px 9px rgba(140,110,70,.08);font-family:'Fredoka';font-weight:500;font-size:15px;cursor:pointer;">
+      <button id="btn-step" class="tbtn" title="Do one step" style="display:flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:14px;background:#fff;color:#5A5049;border:1px solid #E8DECC;box-shadow:0 3px 0 #EFE6D6,0 4px 9px rgba(140,110,70,.08);font-family:'Fredoka';font-weight:500;font-size:15px;cursor:pointer;">
         <span style="font-size:12px;color:var(--ph,#23A06B);">&#9646;&#9654;</span> Step
       </button>
-      <button id="btn-pause" title="Pause" style="display:flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:14px;background:#fff;color:#5A5049;border:1px solid #E8DECC;box-shadow:0 3px 0 #EFE6D6,0 4px 9px rgba(140,110,70,.08);font-family:'Fredoka';font-weight:500;font-size:15px;cursor:pointer;">
+      <button id="btn-pause" class="tbtn" title="Pause" style="display:flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:14px;background:#fff;color:#5A5049;border:1px solid #E8DECC;box-shadow:0 3px 0 #EFE6D6,0 4px 9px rgba(140,110,70,.08);font-family:'Fredoka';font-weight:500;font-size:15px;cursor:pointer;">
         <span style="font-size:13px;color:#E9A23C;">&#9208;</span> Pause
       </button>
       <div style="width:1px;height:30px;background:#EDE3D2;margin:0 4px;"></div>
-      <button id="btn-reset" title="Start over" style="display:flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:14px;background:#fff;color:#5A5049;border:1px solid #E8DECC;box-shadow:0 3px 0 #EFE6D6,0 4px 9px rgba(140,110,70,.08);font-family:'Fredoka';font-weight:500;font-size:15px;cursor:pointer;">
+      <button id="btn-reset" class="tbtn" title="Start over" style="display:flex;align-items:center;gap:8px;height:48px;padding:0 18px;border-radius:14px;background:#fff;color:#5A5049;border:1px solid #E8DECC;box-shadow:0 3px 0 #EFE6D6,0 4px 9px rgba(140,110,70,.08);font-family:'Fredoka';font-weight:500;font-size:15px;cursor:pointer;">
         <span style="font-size:15px;color:#EE7A5A;">&#8635;</span> Reset
       </button>
     </div>
@@ -80,7 +81,7 @@
       <div style="display:flex;flex-direction:column;gap:6px;">
         <span style="font-family:'Nunito';font-weight:700;font-size:10px;letter-spacing:.6px;text-transform:uppercase;color:#B0A491;">Battery</span>
         <div style="width:70px;height:14px;border:1.5px solid #E4DAC8;border-radius:7px;padding:2px;position:relative;background:#F7F2E9;">
-          <div id="pwr-bar" style="height:100%;width:100%;background:linear-gradient(90deg,#7CC24E,var(--ph,#23A06B));border-radius:5px;transition:width .3s;"></div>
+          <div id="pwrBar" style="height:100%;width:100%;background:linear-gradient(90deg,#7CC24E,var(--ph,#23A06B));border-radius:5px;transition:width .3s;"></div>
         </div>
       </div>
     </div>
@@ -94,14 +95,14 @@
       <!-- editor header: mode toggle + examples -->
       <div style="flex:none;min-height:50px;display:flex;align-items:center;gap:10px;padding:0 14px;background:#FBF7EE;border-bottom:1px solid #EFE6D5;flex-wrap:wrap;">
         <div style="display:flex;background:#F1EADB;border:1px solid #E6DBC7;border-radius:11px;padding:3px;gap:3px;">
-          <button id="mode-blocks" style="display:flex;align-items:center;gap:6px;padding:7px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:13px;cursor:pointer;"><span style="font-size:12px;">&#9638;</span> Blocks</button>
-          <button id="mode-py" style="display:flex;align-items:center;gap:6px;padding:7px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'JetBrains Mono';font-weight:700;font-size:12px;cursor:pointer;">&lt;/&gt; Python</button>
+          <button id="modeBlocks" style="display:flex;align-items:center;gap:6px;padding:7px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:13px;cursor:pointer;"><span style="font-size:12px;">&#9638;</span> Blocks</button>
+          <button id="modePy" style="display:flex;align-items:center;gap:6px;padding:7px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'JetBrains Mono';font-weight:700;font-size:12px;cursor:pointer;">&lt;/&gt; Python</button>
         </div>
         <div style="flex:1;"></div>
         <span style="font-family:'Nunito';font-weight:700;font-size:10px;letter-spacing:.5px;text-transform:uppercase;color:#B0A491;">Examples</span>
-        <button id="tab-sweep" style="padding:6px 11px;background:#fff;border:1px solid #E8DECC;border-radius:9px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Sweep</button>
-        <button id="tab-box" style="padding:6px 11px;background:#fff;border:1px solid #E8DECC;border-radius:9px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Square</button>
-        <button id="tab-zig" style="padding:6px 11px;background:#fff;border:1px solid #E8DECC;border-radius:9px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Zigzag</button>
+        <button id="tabSweep" style="padding:6px 11px;background:#fff;border:1px solid #E8DECC;border-radius:9px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Sweep</button>
+        <button id="tabBox" style="padding:6px 11px;background:#fff;border:1px solid #E8DECC;border-radius:9px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Square</button>
+        <button id="tabZig" style="padding:6px 11px;background:#fff;border:1px solid #E8DECC;border-radius:9px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Zigzag</button>
       </div>
 
       <!-- editor body: blocks workspace OR python code -->
@@ -148,27 +149,27 @@
           <span style="font-family:'Fredoka';font-weight:600;font-size:14px;color:#5A5049;">&#9752; Playground</span>
           <div style="width:1px;height:22px;background:#EDE3D2;"></div>
           <div style="display:flex;background:#F5EFE4;border:1px solid #E8DECC;border-radius:10px;overflow:hidden;padding:2px;gap:2px;">
-            <button id="view-top" style="padding:6px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Top view</button>
-            <button id="view-iso" style="padding:6px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">3D view</button>
+            <button id="viewTop" style="padding:6px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">Top view</button>
+            <button id="viewIso" style="padding:6px 13px;background:transparent;border:none;border-radius:8px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:12px;cursor:pointer;">3D view</button>
           </div>
           <div style="flex:1;"></div>
           <span style="font-family:'Nunito';font-weight:600;font-size:12px;color:#A89C8B;">Reach the &#9733; star!</span>
         </div>
         <div style="flex:1;position:relative;min-height:0;background:#F7F1E6;">
-          <canvas id="canvas" style="position:absolute;inset:0;width:100%;height:100%;display:block;"></canvas>
+          <canvas id="cv" style="position:absolute;inset:0;width:100%;height:100%;display:block;"></canvas>
           <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at 50% 48%,rgba(0,0,0,0) 60%,rgba(150,120,70,.07) 100%);"></div>
           <div style="position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(180deg,rgba(0,0,0,0) 0 2px,rgba(120,90,50,.5) 3px);opacity:var(--scan-op,0);mix-blend-mode:multiply;"></div>
           <!-- status HUD -->
           <div style="position:absolute;left:18px;bottom:16px;display:flex;align-items:center;gap:11px;padding:8px 15px;background:rgba(255,255,255,.9);border:1px solid #ECE2D0;border-radius:12px;box-shadow:0 4px 14px rgba(140,110,70,.12);">
-            <span id="status-lamp" style="width:11px;height:11px;border-radius:50%;background:var(--ph,#23A06B);"></span>
-            <span id="hud-status" style="font-family:'Fredoka';font-weight:600;font-size:14px;color:#4A403A;">Ready</span>
+            <span id="statusLamp" style="width:11px;height:11px;border-radius:50%;background:var(--ph,#23A06B);"></span>
+            <span id="hudStatus" style="font-family:'Fredoka';font-weight:600;font-size:14px;color:#4A403A;">Ready</span>
           </div>
           <!-- coords HUD -->
           <div style="position:absolute;left:18px;top:16px;display:flex;gap:16px;padding:9px 15px;background:rgba(255,255,255,.9);border:1px solid #ECE2D0;border-radius:12px;box-shadow:0 4px 14px rgba(140,110,70,.1);font-family:'JetBrains Mono';font-size:12px;color:#8C8073;">
-            <span>x <b id="hud-x" style="color:var(--ph,#23A06B);">1</b></span>
-            <span>y <b id="hud-y" style="color:var(--ph,#23A06B);">6</b></span>
-            <span>facing <b id="hud-h" style="color:var(--ph,#23A06B);">N&#9650;</b></span>
-            <span>step <b id="hud-step" style="color:var(--ph,#23A06B);">0/0</b></span>
+            <span>x <b id="hudX" style="color:var(--ph,#23A06B);">1</b></span>
+            <span>y <b id="hudY" style="color:var(--ph,#23A06B);">6</b></span>
+            <span>facing <b id="hudH" style="color:var(--ph,#23A06B);">N&#9650;</b></span>
+            <span>step <b id="hudStep" style="color:var(--ph,#23A06B);">0/0</b></span>
           </div>
           <!-- legend -->
           <div style="position:absolute;right:18px;top:16px;display:flex;flex-direction:column;gap:7px;padding:11px 14px;background:rgba(255,255,255,.9);border:1px solid #ECE2D0;border-radius:12px;box-shadow:0 4px 14px rgba(140,110,70,.1);font-family:'Nunito';font-weight:600;font-size:11.5px;color:#8C8073;">
@@ -187,7 +188,7 @@
           <button id="btn-clear" style="background:#fff;border:1px solid #E8DECC;border-radius:9px;color:#8C8073;font-family:'Fredoka';font-weight:500;font-size:11px;padding:6px 13px;cursor:pointer;">Clear</button>
         </div>
         <div style="flex:1;position:relative;min-height:0;background:#FDFBF6;">
-          <div id="console" data-scroll style="position:absolute;inset:0;overflow:auto;padding:11px 16px;font-family:'JetBrains Mono';font-size:12px;line-height:18px;"></div>
+          <div id="consoleEl" data-scroll style="position:absolute;inset:0;overflow:auto;padding:11px 16px;font-family:'JetBrains Mono';font-size:12px;line-height:18px;"></div>
         </div>
       </div>
     </div>
@@ -196,12 +197,762 @@
   <!-- ══════════ FOOTER ══════════ -->
   <div style="flex:none;height:30px;display:flex;align-items:center;justify-content:space-between;background:#FFFFFF;border-top:1px solid #EFE6D5;font-family:'Nunito';font-weight:600;font-size:11px;color:#B0A491;padding:0 16px;">
     <div style="display:flex;gap:16px;align-items:center;">
+      <a href="index.html" style="color:var(--ph,#23A06B);display:flex;align-items:center;gap:5px;">&#8592; Workshop</a>
       <span>Rover Lab</span><span>&#183; have fun exploring!</span>
     </div>
     <div style="display:flex;gap:16px;align-items:center;"><span>Grid 12&#215;8</span><span style="display:flex;align-items:center;gap:6px;color:var(--ph,#23A06B);"><span style="width:7px;height:7px;border-radius:50%;background:var(--ph,#23A06B);"></span> Connected</span></div>
   </div>
 </div>
 
-<script src="js/rover.js"></script>
+<script>
+// Rover Lab — vanilla port of the claude.ai Design "Robot Simulator.dc.html"
+// (project ead2ea84 "Desktop robot simulator"). Refs become getElementById-backed
+// accessors so the design's imperative logic runs unchanged; React lifecycle is
+// replaced by init() + wire(). Logic (parser/codegen/flatten/draw) is verbatim.
+class RoverLab {
+  // ── config ──
+  COLS = 12; ROWS = 8;
+  START = { x: 1, y: 6, h: 0 };
+  GOAL = { x: 9, y: 1 };
+  OBST = [[7,4],[8,4],[9,4],[8,3],[2,1],[6,5]];
+  DIRV = [[0,-1],[1,0],[0,1],[-1,0]];
+  DIRN = ['N','E','S','W'];
+  ARROW = { N:'▲', E:'▶', S:'▼', W:'◀' };
+  LABELS = { IDLE:'Ready', RUNNING:'Running', PAUSED:'Paused', HALT:'Stuck', DONE:'You did it!' };
+  SPEEDS = { slow:{move:640,turn:460}, med:{move:400,turn:290}, fast:{move:210,turn:150} };
+
+  PAL = {
+    green:{tint:'#EAF6EE',border:'#C4E3CE',text:'#1F7A50'},
+    orange:{tint:'#FBF1DE',border:'#F0DDB8',text:'#B9791F'},
+    blue:{tint:'#E7F2FB',border:'#C6E0F2',text:'#2E7BB0'},
+    steel:{tint:'#EEF3F7',border:'#D6E2EC',text:'#5F7E96'},
+    violet:{tint:'#F1ECF9',border:'#DDCEF0',text:'#7A5BB0'},
+    pink:{tint:'#FBEEF2',border:'#F1D6DF',text:'#BD5B78'},
+    purple:{tint:'#EEEBFA',border:'#D4CCF2',text:'#5A4FB0'}
+  };
+  PALCMDS = ['forward','back','turn_left','turn_right','scan','wait','pen_down','led','repeat'];
+  LEDORDER = ['CYAN','GREEN','AMBER','RED','BLUE','WHITE'];
+
+  PRESETS = {
+    sweep: "# Sweep — reach the star at (9, 1)\n# Change the numbers, then press Run!\npen_down()\nforward(3)\nturn_right()\nforward(4)\nscan()\nturn_left()\nforward(2)\nturn_right()\nforward(4)",
+    box: "# Square — walk a little loop\npen_down()\nrepeat(4):\n    forward(3)\n    turn_right()\nscan()",
+    zig: "# Zigzag — wander back and forth\npen_down()\nled(\"cyan\")\nrepeat(3):\n    forward(2)\n    turn_right()\n    forward(2)\n    turn_left()\nscan()"
+  };
+
+  // ── state (imperative) ──
+  ast = []; pyText = ''; mode = 'blocks';
+  steps = []; pc = 0; dirty = true;
+  running = false; active = null; scanFx = null;
+  speed = 'med'; view = 'top'; status = 'IDLE';
+  logEntries = []; PH = '#23A06B'; presetKey = 'sweep';
+
+  constructor() {
+    this.props = { accent:'#23A06B', startMode:'blocks', startView:'top', defaultSpeed:'med', paperGrain:false };
+    const ref = (id) => ({ get current() { return document.getElementById(id); } });
+    this.rootRef = ref('root'); this.taRef = ref('ta'); this.hlRef = ref('hl');
+    this.gutterRef = ref('gutter'); this.canvasRef = ref('cv'); this.consoleRef = ref('consoleEl');
+    this.workspaceRef = ref('workspace'); this.codePane = ref('codePane');
+    this.paletteRef = ref('palette'); this.paletteWrapRef = ref('paletteWrap'); this.pyHelpRef = ref('pyHelp');
+    this.hudX = ref('hudX'); this.hudY = ref('hudY'); this.hudH = ref('hudH'); this.hudStep = ref('hudStep');
+    this.hudStatus = ref('hudStatus'); this.statusLamp = ref('statusLamp'); this.pwrBar = ref('pwrBar'); this.runLed = ref('runLed');
+    this.modeBlocksBtn = ref('modeBlocks'); this.modePyBtn = ref('modePy');
+    this.viewTopBtn = ref('viewTop'); this.viewIsoBtn = ref('viewIso');
+    this.tabSweep = ref('tabSweep'); this.tabBox = ref('tabBox'); this.tabZig = ref('tabZig');
+  }
+
+  // ═══════════ lifecycle (was componentDidMount) ═══════════
+  init() {
+    this.applyTheme();
+    this.mode = this.props.startMode || 'blocks';
+    this.view = this.props.startView || 'top';
+    this.speed = this.props.defaultSpeed || 'med';
+    this.rover = { x:this.START.x, y:this.START.y, h:this.START.h, pen:false, led:this.PH };
+    this.render = { gx:this.START.x, gy:this.START.y, angle:this.START.h * 90 };
+    this.trail = [];
+    this.renderPalette();
+    this.loadPreset('sweep', true);
+    this.logEntries.unshift({ ts:this.stamp(), sym:'›', color:'#A89C8B', msg:"Hi! Build with blocks or switch to Python, then press Run." });
+    this.renderConsole();
+    this.setModeButtons(); this.setViewButtons(); this.syncEditorMode();
+    this.wire();
+    this.draw(performance.now());
+    if (window.ResizeObserver && this.canvasRef.current) {
+      this._ro = new ResizeObserver(() => this.draw(performance.now()));
+      this._ro.observe(this.canvasRef.current);
+    }
+    this._raf = requestAnimationFrame(this.loop);
+  }
+  wire() {
+    const on = (id, ev, fn) => { const el = document.getElementById(id); if (el) el.addEventListener(ev, fn); };
+    on('btn-run', 'click', () => this.run());
+    on('btn-step', 'click', () => this.step());
+    on('btn-pause', 'click', () => this.pause());
+    on('btn-reset', 'click', () => this.reset());
+    on('btn-clear', 'click', () => { this.logEntries = []; this.renderConsole(); });
+    on('modeBlocks', 'click', () => this.setMode('blocks'));
+    on('modePy', 'click', () => this.setMode('python'));
+    on('viewTop', 'click', () => this.setView('top'));
+    on('viewIso', 'click', () => this.setView('iso'));
+    on('tabSweep', 'click', () => this.loadPreset('sweep'));
+    on('tabBox', 'click', () => this.loadPreset('box'));
+    on('tabZig', 'click', () => this.loadPreset('zig'));
+    on('ta', 'input', this.onInput);
+    on('ta', 'scroll', this.onScroll);
+    this._click = (e) => this.onEditorClick(e);
+    if (this.rootRef.current) this.rootRef.current.addEventListener('click', this._click);
+  }
+
+  // ═══════════ theme ═══════════
+  applyTheme() {
+    const r = this.rootRef.current; if (!r) return;
+    const ph = this.props.accent || '#23A06B';
+    this.PH = ph; r.style.setProperty('--ph', ph);
+    r.style.setProperty('--scan-op', this.props.paperGrain ? 0.05 : 0);
+  }
+
+  // ═══════════ mode switching ═══════════
+  setMode(m) {
+    if (m === this.mode) return;
+    if (m === 'python') {
+      this.pyText = this.codegen(this.ast, 0);
+      if (this.taRef.current) this.taRef.current.value = this.pyText;
+      this.mode = 'python'; this.updateHighlight();
+    } else {
+      try { this.ast = this.parsePython(this.taRef.current ? this.taRef.current.value : this.pyText); }
+      catch (e) { this.log("Let’s fix the Python first" + (e.line ? ' (line ' + e.line + ')' : '') + ": " + e.message, 'err'); return; }
+      this.mode = 'blocks'; this.renderBlocks();
+    }
+    this.dirty = true; this.setModeButtons(); this.syncEditorMode();
+  }
+  syncEditorMode() {
+    const blocks = this.mode === 'blocks';
+    if (this.workspaceRef.current) this.workspaceRef.current.style.display = blocks ? 'block' : 'none';
+    if (this.codePane.current) this.codePane.current.style.display = blocks ? 'none' : 'flex';
+    if (this.paletteWrapRef.current) this.paletteWrapRef.current.style.display = blocks ? 'block' : 'none';
+    if (this.pyHelpRef.current) this.pyHelpRef.current.style.display = blocks ? 'none' : 'block';
+  }
+  setModeButtons() {
+    const on = (el, active) => { if (!el) return; el.style.background = active ? '#fff' : 'transparent'; el.style.color = active ? (el === this.modePyBtn.current ? '#5A4FB0' : 'var(--ph,#23A06B)') : '#8C8073'; el.style.boxShadow = active ? '0 1px 4px rgba(140,110,70,.14)' : 'none'; };
+    on(this.modeBlocksBtn.current, this.mode === 'blocks');
+    on(this.modePyBtn.current, this.mode === 'python');
+  }
+
+  // ═══════════ Python editor ═══════════
+  onInput = (e) => { this.pyText = e.target.value; this.dirty = true; this.presetKey = null; this.setPresetTabs(null); this.updateHighlight(); };
+  onScroll = (e) => {
+    const ta = e.target;
+    if (this.hlRef.current) { this.hlRef.current.scrollTop = ta.scrollTop; this.hlRef.current.scrollLeft = ta.scrollLeft; }
+    if (this.gutterRef.current) this.gutterRef.current.scrollTop = ta.scrollTop;
+  };
+  updateHighlight() {
+    if (this.mode !== 'python') return;
+    const code = this.taRef.current ? this.taRef.current.value : (this.pyText || '');
+    if (this.hlRef.current) this.hlRef.current.innerHTML = this.highlightPy(code);
+    if (this.gutterRef.current) {
+      const n = Math.max(1, code.split('\n').length);
+      let g = ''; for (let i = 1; i <= n; i++) g += (i < 10 ? '0' + i : '' + i) + (i < n ? '\n' : '');
+      this.gutterRef.current.textContent = g;
+    }
+  }
+  highlightPy(code) {
+    const FN = new Set(['forward','fd','back','backward','bk','turn_left','turn_right','left','right','scan','wait','sleep','pen_up','pen_down','led','light']);
+    const esc = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const sp = (c, extra, txt) => '<span style="color:' + c + ';' + (extra || '') + '">' + txt + '</span>';
+    return code.split('\n').map(line => {
+      const h = line.indexOf('#');
+      const codePart = h >= 0 ? line.slice(0, h) : line;
+      const com = h >= 0 ? line.slice(h) : '';
+      let html = codePart.replace(/("[^"]*"|'[^']*')|(\d+)|([A-Za-z_]\w*)|(\s+)|([\s\S])/g,
+        (m, str, num, id, ws, ch) => {
+          if (str) return sp('#C8822A', '', esc(str));
+          if (num) return sp('#3E8FC7', '', esc(num));
+          if (id) { const l = id.toLowerCase(); if (l === 'repeat' || l === 'loop' || l === 'for') return sp('#7C6FD6', 'font-weight:700', esc(id)); if (FN.has(l)) return sp('var(--ph,#23A06B)', 'font-weight:700', esc(id)); return sp('#7A6E5E', '', esc(id)); }
+          if (ws) return ws;
+          return sp('#B0A491', '', esc(ch));
+        });
+      if (com) html += sp('#B3A691', 'font-style:italic', esc(com));
+      return html;
+    }).join('\n');
+  }
+
+  // ═══════════ Python parser → AST ═══════════
+  parsePython(src) {
+    const items = [];
+    src.split('\n').forEach((raw, i) => {
+      let s = raw; const h = s.indexOf('#'); if (h >= 0) s = s.slice(0, h);
+      if (!s.trim()) return;
+      const lead = s.match(/^[ \t]*/)[0]; const indent = lead.replace(/\t/g, '    ').length;
+      items.push({ indent, text: s.trim(), line: i + 1 });
+    });
+    let p = 0;
+    const err = (m, line) => { const e = new Error(m); e.line = line; throw e; };
+    const stmt = (text, line) => {
+      if (/^pass$/i.test(text)) return { t:'pass', line };
+      const m = text.match(/^([A-Za-z_]+)\s*\((.*)\)\s*:?\s*$/);
+      if (!m) err('I couldn’t read this line: "' + text + '"', line);
+      const name = m[1].toLowerCase(); const arg = m[2].trim();
+      const needInt = (lo, hi) => {
+        if (!/^-?\d+$/.test(arg)) err('this needs a number inside the ( )', line);
+        const v = parseInt(arg, 10); if (v < lo || v > hi) err('keep this between ' + lo + ' and ' + hi, line); return v;
+      };
+      if (name === 'forward' || name === 'fd') return { t:'forward', n:needInt(0,200), line };
+      if (name === 'back' || name === 'backward' || name === 'bk') return { t:'back', n:needInt(0,200), line };
+      if (name === 'turn_left' || name === 'left' || name === 'turnleft') return { t:'turn', dir:'L', line };
+      if (name === 'turn_right' || name === 'right' || name === 'turnright') return { t:'turn', dir:'R', line };
+      if (name === 'scan') return { t:'scan', line };
+      if (name === 'wait' || name === 'sleep') return { t:'wait', n:needInt(0,60), line };
+      if (name === 'pen_down' || name === 'pendown') return { t:'pen', down:true, line };
+      if (name === 'pen_up' || name === 'penup') return { t:'pen', down:false, line };
+      if (name === 'led' || name === 'light') { const c = arg.replace(/['"]/g, '').trim(); if (!c) err('led needs a color, like led("cyan")', line); return { t:'led', color:c.toUpperCase(), line }; }
+      if (name === 'repeat' || name === 'loop') return { t:'repeat', count:needInt(0,500), body:[], line };
+      err('I don’t know the command "' + name + '"', line);
+    };
+    const block = (level) => {
+      const body = [];
+      while (p < items.length && items[p].indent === level) {
+        const it = items[p]; p++;
+        const node = stmt(it.text, it.line);
+        if (node.t === 'repeat') {
+          if (p < items.length && items[p].indent > level) node.body = block(items[p].indent);
+        } else if (p < items.length && items[p].indent > level) {
+          err('only repeat can hold steps inside it', items[p].line);
+        }
+        body.push(node);
+      }
+      return body;
+    };
+    const ast = block(0);
+    if (p < items.length) err('check that your steps line up (indentation looks off)', items[p].line);
+    return ast;
+  }
+
+  // ═══════════ AST → Python ═══════════
+  codegen(list, indent) {
+    const pad = ' '.repeat(indent);
+    return list.map(n => {
+      switch (n.t) {
+        case 'forward': return pad + 'forward(' + n.n + ')';
+        case 'back': return pad + 'back(' + n.n + ')';
+        case 'turn': return pad + (n.dir === 'R' ? 'turn_right()' : 'turn_left()');
+        case 'scan': return pad + 'scan()';
+        case 'wait': return pad + 'wait(' + n.n + ')';
+        case 'pen': return pad + (n.down ? 'pen_down()' : 'pen_up()');
+        case 'led': return pad + 'led("' + (n.color || 'cyan').toLowerCase() + '")';
+        case 'repeat': return pad + 'repeat(' + n.count + '):\n' + (n.body && n.body.length ? this.codegen(n.body, indent + 4) : pad + '    pass');
+        default: return '';
+      }
+    }).filter(s => s !== '').join('\n');
+  }
+
+  // ═══════════ AST → runtime ops ═══════════
+  flatten(ast) {
+    const ops = []; const MAX = 900;
+    const emit = (op) => { if (ops.length >= MAX) { const e = new Error('that program is a bit too long (over ' + MAX + ' steps)'); e.line = op.line; throw e; } ops.push(op); };
+    const walk = (list) => {
+      for (const n of list) {
+        if (n.t === 'forward' || n.t === 'back') { const s = n.t === 'back' ? -1 : 1; for (let k = 0; k < n.n; k++) emit({ type:'move', dir:s, line:n.line }); }
+        else if (n.t === 'turn') emit({ type:'turn', dir:n.dir, line:n.line });
+        else if (n.t === 'scan') emit({ type:'scan', line:n.line });
+        else if (n.t === 'wait') emit({ type:'wait', n:n.n, line:n.line });
+        else if (n.t === 'pen') emit({ type:'pen', down:n.down, line:n.line });
+        else if (n.t === 'led') emit({ type:'led', name:n.color, color:this.ledColor(n.color), line:n.line });
+        else if (n.t === 'repeat') { for (let r = 0; r < n.count; r++) walk(n.body || []); }
+      }
+    };
+    walk(ast || []);
+    return ops;
+  }
+  ledColor(name) {
+    const m = { WHITE:'#eafff2', RED:'#F2795B', GREEN:'#23A06B', BLUE:'#5AB0E8', AMBER:'#F2B23F', YELLOW:'#F7CE4B', CYAN:'#4FA9E0' };
+    return m[(name || '').toUpperCase()] || this.PH;
+  }
+
+  // ═══════════ block workspace render ═══════════
+  nodeColor(node) {
+    const P = this.PAL;
+    switch (node.t) {
+      case 'forward': return Object.assign({ icon:'→', label:'Forward' }, P.green);
+      case 'back': return Object.assign({ icon:'←', label:'Back' }, P.green);
+      case 'turn': return Object.assign({ icon:node.dir === 'L' ? '↺' : '↻', label:'Turn' }, P.orange);
+      case 'scan': return Object.assign({ icon:'◎', label:'Look around' }, P.blue);
+      case 'wait': return Object.assign({ icon:'◴', label:'Wait' }, P.steel);
+      case 'pen': return Object.assign({ icon:'✎', label:'Pen' }, P.violet);
+      case 'led': return Object.assign({ icon:'✦', label:'Light' }, P.pink);
+      default: return Object.assign({ icon:'?', label:node.t }, P.steel);
+    }
+  }
+  cmdMeta(cmd) {
+    const P = this.PAL;
+    const m = {
+      forward:{ icon:'→', label:'Forward', c:P.green },
+      back:{ icon:'←', label:'Back', c:P.green },
+      turn_left:{ icon:'↺', label:'Turn left', c:P.orange },
+      turn_right:{ icon:'↻', label:'Turn right', c:P.orange },
+      scan:{ icon:'◎', label:'Look', c:P.blue },
+      wait:{ icon:'◴', label:'Wait', c:P.steel },
+      pen_down:{ icon:'✎', label:'Pen', c:P.violet },
+      led:{ icon:'✦', label:'Light', c:P.pink },
+      repeat:{ icon:'⟳', label:'Repeat', c:P.purple }
+    };
+    return m[cmd];
+  }
+  buildChip(cmd, scope, big) {
+    const m = this.cmdMeta(cmd); const c = m.c;
+    const pad = big ? '8px 13px' : '5px 9px'; const fs = big ? '13px' : '11.5px'; const rad = big ? '11px' : '9px';
+    return '<button data-act="add" data-cmd="' + cmd + '" data-scope="' + scope + '" ' +
+      'style="display:inline-flex;align-items:center;gap:6px;padding:' + pad + ';border-radius:' + rad + ';background:' + c.tint + ';border:1px solid ' + c.border + ';color:' + c.text + ";font-family:'Fredoka';font-weight:500;font-size:" + fs + ';cursor:pointer;line-height:1;">' +
+      '<span style="font-size:' + fs + ';opacity:.85;">' + m.icon + '</span>' + m.label + '</button>';
+  }
+  renderPalette() {
+    const el = this.paletteRef.current; if (!el) return;
+    el.innerHTML = this.PALCMDS.map(c => this.buildChip(c, '', true)).join('');
+  }
+  stepper(path, val, unit, color) {
+    const step = "width:22px;height:22px;border-radius:7px;border:1px solid #E4DAC8;background:#F7F1E4;color:#6B5D4E;font-size:14px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;font-family:'Fredoka';";
+    return '<span style="display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #EEE3D0;border-radius:10px;padding:3px 6px;">' +
+      '<button data-act="dec" data-path="' + path + '" style="' + step + '">−</button>' +
+      '<b style="min-width:16px;text-align:center;font-family:\'JetBrains Mono\';font-size:13px;color:' + color + ';">' + val + '</b>' +
+      '<button data-act="inc" data-path="' + path + '" style="' + step + '">+</button>' +
+      '<span style="font-family:\'Nunito\';font-weight:700;font-size:11px;color:#A89C8B;margin-left:1px;">' + unit + '</span></span>';
+  }
+  ctrls(path) {
+    const mini = (act, glyph, col) => '<button data-act="' + act + '" data-path="' + path + '" style="width:24px;height:24px;border-radius:7px;border:1px solid transparent;background:transparent;color:' + col + ';font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;">' + glyph + '</button>';
+    return '<span style="display:inline-flex;gap:2px;flex:none;">' + mini('up','▴','#B0A491') + mini('down','▾','#B0A491') + mini('del','×','#E0714F') + '</span>';
+  }
+  blockHTML(node, path) {
+    if (node.t === 'pass') return '';
+    if (node.t === 'repeat') return this.repeatHTML(node, path);
+    const C = this.nodeColor(node);
+    const pill = "display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:10px;background:#fff;border:1px solid " + C.border + ";color:" + C.text + ";font-family:'Fredoka';font-weight:500;font-size:12.5px;cursor:pointer;";
+    let param = '';
+    if (node.t === 'forward' || node.t === 'back') param = this.stepper(path, node.n, node.n === 1 ? 'step' : 'steps', C.text);
+    else if (node.t === 'wait') param = this.stepper(path, node.n, node.n === 1 ? 'tick' : 'ticks', C.text);
+    else if (node.t === 'turn') param = '<button data-act="turndir" data-path="' + path + '" style="' + pill + '">' + (node.dir === 'L' ? '↺ left' : '↻ right') + '</button>';
+    else if (node.t === 'pen') param = '<button data-act="pentoggle" data-path="' + path + '" style="' + pill + '">' + (node.down ? 'down ✎' : 'up') + '</button>';
+    else if (node.t === 'led') { const col = this.ledColor(node.color); param = '<button data-act="ledcolor" data-path="' + path + '" style="display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 8px;border-radius:10px;background:#fff;border:1px solid ' + C.border + ';color:' + C.text + ";font-family:'Fredoka';font-weight:500;font-size:12.5px;cursor:pointer;\"><span style=\"width:15px;height:15px;border-radius:50%;background:" + col + ';box-shadow:0 0 0 2px #fff,0 0 0 3px ' + C.border + ';"></span>' + (node.color || 'cyan').toLowerCase() + '</button>'; }
+    return '<div style="display:flex;align-items:center;gap:10px;margin:0 0 8px;padding:9px 11px;border-radius:13px;background:' + C.tint + ';border:1px solid ' + C.border + ';box-shadow:0 1px 0 rgba(255,255,255,.6) inset,0 2px 5px rgba(140,110,70,.05);animation:popIn .14s ease-out;">' +
+      '<span style="flex:none;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid ' + C.border + ';color:' + C.text + ';font-size:15px;">' + C.icon + '</span>' +
+      '<span style="font-family:\'Fredoka\';font-weight:500;font-size:14px;color:' + C.text + ';">' + C.label + '</span>' + param +
+      '<span style="flex:1;"></span>' + this.ctrls(path) + '</div>';
+  }
+  repeatHTML(node, path) {
+    const C = this.PAL.purple;
+    const body = (node.body || []);
+    const kids = body.map((c, i) => this.blockHTML(c, path + '.' + i)).join('');
+    const inline = '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:' + (body.length ? '8px' : '0') + ';">' + this.PALCMDS.map(c => this.buildChip(c, path, false)).join('') + '</div>';
+    const empty = body.length ? '' : '<div style="font-family:\'Nunito\';font-weight:600;font-size:12px;color:#A99BC7;padding:2px 0 8px;">add steps to repeat ↓</div>';
+    return '<div style="margin:0 0 8px;border-radius:14px;background:' + C.tint + ';border:1px solid ' + C.border + ';box-shadow:0 2px 6px rgba(140,110,70,.05);animation:popIn .14s ease-out;">' +
+      '<div style="display:flex;align-items:center;gap:10px;padding:9px 11px;">' +
+        '<span style="flex:none;width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;background:#fff;border:1px solid ' + C.border + ';color:' + C.text + ';font-size:15px;">⟳</span>' +
+        '<span style="font-family:\'Fredoka\';font-weight:600;font-size:14px;color:' + C.text + ';">Repeat</span>' +
+        this.stepper(path, node.count, node.count === 1 ? 'time' : 'times', C.text) +
+        '<span style="flex:1;"></span>' + this.ctrls(path) + '</div>' +
+      '<div style="margin:0 12px 11px 22px;padding:8px 0 8px 12px;border-left:2px dashed ' + C.border + ';">' + kids + empty + inline + '</div></div>';
+  }
+  renderBlocks() {
+    const el = this.workspaceRef.current; if (!el) return;
+    if (!this.ast || this.ast.length === 0) {
+      el.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;color:#B7AB98;gap:10px;padding:20px;">' +
+        '<div style="font-size:34px;">→ ↻ ⟳</div>' +
+        '<div style="font-family:\'Fredoka\';font-weight:500;font-size:15px;color:#8C8073;">Your program is empty</div>' +
+        '<div style="font-family:\'Nunito\';font-weight:600;font-size:12.5px;max-width:220px;">Click a block below to start telling your rover what to do.</div></div>';
+      return;
+    }
+    el.innerHTML = this.ast.map((n, i) => this.blockHTML(n, '' + i)).join('');
+  }
+
+  // ═══════════ block editing ═══════════
+  resolveScope(scope) {
+    if (scope === '' || scope == null) return this.ast;
+    const idxs = scope.split('.').map(Number); let arr = this.ast;
+    for (let i = 0; i < idxs.length; i++) arr = arr[idxs[i]].body;
+    return arr;
+  }
+  resolveBlock(path) {
+    const idxs = path.split('.').map(Number); let arr = this.ast;
+    for (let i = 0; i < idxs.length - 1; i++) arr = arr[idxs[i]].body;
+    return { arr, idx: idxs[idxs.length - 1] };
+  }
+  makeNode(cmd) {
+    switch (cmd) {
+      case 'forward': return { t:'forward', n:2 };
+      case 'back': return { t:'back', n:1 };
+      case 'turn_left': return { t:'turn', dir:'L' };
+      case 'turn_right': return { t:'turn', dir:'R' };
+      case 'scan': return { t:'scan' };
+      case 'wait': return { t:'wait', n:1 };
+      case 'pen_down': return { t:'pen', down:true };
+      case 'led': return { t:'led', color:'CYAN' };
+      case 'repeat': return { t:'repeat', count:3, body:[] };
+    }
+  }
+  afterEdit() { this.dirty = true; this.presetKey = null; this.setPresetTabs(null); this.renderBlocks(); }
+  addBlock(scope, cmd) {
+    const arr = this.resolveScope(scope); arr.push(this.makeNode(cmd)); this.afterEdit();
+    if ((scope === '' || scope == null) && this.workspaceRef.current) { const el = this.workspaceRef.current; el.scrollTop = el.scrollHeight; }
+  }
+  clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+  editNum(path, d) {
+    const { arr, idx } = this.resolveBlock(path); const n = arr[idx];
+    if (n.t === 'repeat') n.count = this.clamp(n.count + d, 0, 500);
+    else if (n.t === 'wait') n.n = this.clamp(n.n + d, 0, 60);
+    else n.n = this.clamp((n.n || 0) + d, 0, 200);
+    this.afterEdit();
+  }
+  onEditorClick(e) {
+    const b = e.target.closest('[data-act]'); if (!b || !this.rootRef.current.contains(b)) return;
+    const act = b.getAttribute('data-act'); const path = b.getAttribute('data-path');
+    if (act === 'add') { this.addBlock(b.getAttribute('data-scope') || '', b.getAttribute('data-cmd')); }
+    else if (act === 'del') { const r = this.resolveBlock(path); r.arr.splice(r.idx, 1); this.afterEdit(); }
+    else if (act === 'up') { const r = this.resolveBlock(path); if (r.idx > 0) { const a = r.arr; const t = a[r.idx-1]; a[r.idx-1] = a[r.idx]; a[r.idx] = t; } this.afterEdit(); }
+    else if (act === 'down') { const r = this.resolveBlock(path); if (r.idx < r.arr.length - 1) { const a = r.arr; const t = a[r.idx+1]; a[r.idx+1] = a[r.idx]; a[r.idx] = t; } this.afterEdit(); }
+    else if (act === 'inc') this.editNum(path, 1);
+    else if (act === 'dec') this.editNum(path, -1);
+    else if (act === 'turndir') { const { arr, idx } = this.resolveBlock(path); arr[idx].dir = arr[idx].dir === 'L' ? 'R' : 'L'; this.afterEdit(); }
+    else if (act === 'pentoggle') { const { arr, idx } = this.resolveBlock(path); arr[idx].down = !arr[idx].down; this.afterEdit(); }
+    else if (act === 'ledcolor') { const { arr, idx } = this.resolveBlock(path); const o = this.LEDORDER; arr[idx].color = o[(o.indexOf(arr[idx].color) + 1) % o.length]; this.afterEdit(); }
+    else return;
+    e.preventDefault();
+  }
+
+  // ═══════════ transport ═══════════
+  run() {
+    if (this.dirty || this.pc >= this.steps.length || this.status === 'HALT' || this.status === 'DONE') this.reset();
+    if (this.status === 'HALT') return;
+    if (this.steps.length === 0) { this.log("Nothing to run yet — add some steps first.", 'info'); return; }
+    this.running = true; this.status = 'RUNNING'; this.log("Off we go!", 'sys'); this.syncHud();
+  }
+  step() {
+    if (this.active) return;
+    if (this.dirty || this.pc >= this.steps.length || this.status === 'DONE' || this.status === 'HALT') this.reset();
+    if (this.status === 'HALT' || this.steps.length === 0) return;
+    this.running = false; this.status = 'RUNNING';
+    if (this.pc < this.steps.length) this.startOp(this.steps[this.pc]);
+    this.syncHud();
+  }
+  pause() {
+    if (!this.running) return;
+    this.running = false; this.status = 'PAUSED'; this.log("Paused — press Run to keep going.", 'sys'); this.syncHud();
+  }
+  reset() {
+    this.running = false; this.active = null; this.scanFx = null;
+    this.rover = { x:this.START.x, y:this.START.y, h:this.START.h, pen:false, led:this.PH };
+    this.render = { gx:this.START.x, gy:this.START.y, angle:this.START.h * 90 };
+    this.trail = []; this.pc = 0; this.logEntries = []; this.renderConsole();
+    this.status = 'IDLE';
+    try {
+      if (this.mode === 'python') this.ast = this.parsePython(this.taRef.current ? this.taRef.current.value : this.pyText);
+      this.steps = this.flatten(this.ast); this.dirty = false;
+      this.log("Ready to go — " + this.steps.length + " step" + (this.steps.length === 1 ? '' : 's') + " loaded.", 'sys');
+    } catch (e) {
+      this.steps = []; this.status = 'HALT';
+      this.log("Hmm, something’s off" + (e.line ? ' on line ' + e.line : '') + ": " + e.message, 'err');
+    }
+    this.syncHud();
+    if (this.canvasRef.current) this.draw(performance.now());
+  }
+
+  // ═══════════ execution ═══════════
+  startOp(op) {
+    const now = performance.now(); const sp = this.SPEEDS[this.speed] || this.SPEEDS.med;
+    if (op.type === 'move') {
+      const d = this.DIRV[this.rover.h];
+      const nx = this.rover.x + d[0] * op.dir, ny = this.rover.y + d[1] * op.dir;
+      const b = this.blocked(nx, ny);
+      if (b) {
+        this.log((b === 'BOUNDARY' ? "Reached the edge" : "Bumped into a rock") + " at (" + nx + ", " + ny + ")" + (op.line ? " — line " + op.line : ''), 'err');
+        this.status = 'HALT'; this.running = false; this.active = null; this.syncHud(); return;
+      }
+      this.active = { type:'move', t0:now, dur:sp.move, from:{ x:this.render.gx, y:this.render.gy }, nx, ny };
+    } else if (op.type === 'turn') {
+      const delta = op.dir === 'R' ? 90 : -90;
+      this.active = { type:'turn', t0:now, dur:sp.turn, from:this.render.angle, to:this.render.angle + delta, newh:(this.rover.h + (op.dir === 'R' ? 1 : 3)) % 4 };
+    } else if (op.type === 'scan') {
+      this.scanFx = { t0:now, dur:760 };
+      this.log("Looking around: " + this.scanReport(), 'scan');
+      this.active = { type:'scan', t0:now, dur:780 };
+    } else if (op.type === 'wait') {
+      this.log("Waiting " + op.n + " tick" + (op.n === 1 ? '' : 's') + "…", 'sys');
+      this.active = { type:'wait', t0:now, dur:Math.max(220, sp.move * Math.min(op.n, 6)) };
+    } else if (op.type === 'pen') {
+      this.rover.pen = op.down; if (op.down) this.addTrail(this.rover.x, this.rover.y);
+      this.log(op.down ? "Pen down — leaving a trail." : "Pen up — no more trail.", 'sys');
+      this.active = { type:'inst', t0:now, dur:80 };
+    } else if (op.type === 'led') {
+      this.rover.led = op.color; this.log("Light turns " + (op.name || '').toLowerCase() + ".", 'sys');
+      this.active = { type:'inst', t0:now, dur:80 };
+    }
+  }
+  finishOp() {
+    const op = this.active; this.active = null;
+    if (op.type === 'move') {
+      this.rover.x = op.nx; this.rover.y = op.ny; this.render.gx = op.nx; this.render.gy = op.ny;
+      if (this.rover.pen) this.addTrail(op.nx, op.ny);
+      this.log("Moved to (" + op.nx + ", " + op.ny + ")", 'move');
+      if (op.nx === this.GOAL.x && op.ny === this.GOAL.y) {
+        this.log("You reached the goal — nice work! ★", 'ok');
+        this.status = 'DONE'; this.running = false;
+      }
+    } else if (op.type === 'turn') {
+      this.rover.h = op.newh; this.render.angle = op.to;
+      this.log("Turned to face " + this.DIRN[op.newh], 'move');
+    }
+    this.pc++;
+    if (this.running) { if (this.pc >= this.steps.length) { this.running = false; if (this.status !== 'DONE') this.status = 'IDLE'; } }
+    else if (this.status !== 'DONE' && this.status !== 'HALT') this.status = this.pc >= this.steps.length ? 'IDLE' : 'PAUSED';
+    this.syncHud();
+  }
+  startNextIfRunning() {
+    if (this.pc < this.steps.length) this.startOp(this.steps[this.pc]);
+    else { this.running = false; if (this.status !== 'DONE') this.status = 'IDLE'; this.syncHud(); }
+  }
+  blocked(x, y) {
+    if (x < 0 || x >= this.COLS || y < 0 || y >= this.ROWS) return 'BOUNDARY';
+    for (const o of this.OBST) if (o[0] === x && o[1] === y) return 'OBSTACLE';
+    return null;
+  }
+  addTrail(x, y) { const l = this.trail[this.trail.length - 1]; if (!l || l.x !== x || l.y !== y) this.trail.push({ x, y }); }
+  scanReport() {
+    let best = null, bd = 1e9;
+    for (const o of this.OBST) { const d = Math.abs(o[0] - this.rover.x) + Math.abs(o[1] - this.rover.y); if (d < bd) { bd = d; best = o; } }
+    const gd = Math.abs(this.GOAL.x - this.rover.x) + Math.abs(this.GOAL.y - this.rover.y);
+    let s = "goal is " + gd + " cell" + (gd === 1 ? '' : 's') + " away " + this.bearing(this.GOAL.x - this.rover.x, this.GOAL.y - this.rover.y);
+    if (best) s += " · nearest rock " + bd + " away " + this.bearing(best[0] - this.rover.x, best[1] - this.rover.y);
+    return s;
+  }
+  bearing(dx, dy) { const ns = dy < 0 ? 'N' : dy > 0 ? 'S' : ''; const ew = dx > 0 ? 'E' : dx < 0 ? 'W' : ''; return (ns + ew) || 'right here'; }
+
+  // ═══════════ controls ═══════════
+  setView(v) { this.view = v; this.setViewButtons(); this.draw(performance.now()); }
+  loadPreset(k, silent) {
+    this.presetKey = k; const py = this.PRESETS[k];
+    this.pyText = py; if (this.taRef.current) this.taRef.current.value = py;
+    try { this.ast = this.parsePython(py); } catch (e) { this.ast = []; }
+    this.updateHighlight(); this.renderBlocks(); this.setPresetTabs(k);
+    this.reset();
+    if (!silent) this.log("Loaded the “" + k + "” example.", 'info');
+  }
+  seg(el, on) { if (!el) return; el.style.background = on ? 'var(--ph,#23A06B)' : 'transparent'; el.style.color = on ? '#fff' : '#8C8073'; el.style.boxShadow = on ? '0 2px 6px rgba(31,152,102,.25)' : 'none'; }
+  setViewButtons() { this.seg(this.viewTopBtn.current, this.view === 'top'); this.seg(this.viewIsoBtn.current, this.view === 'iso'); }
+  setPresetTabs(k) {
+    const set = (el, on) => { if (!el) return; el.style.color = on ? 'var(--ph,#23A06B)' : '#8C8073'; el.style.borderColor = on ? 'var(--ph,#23A06B)' : '#E8DECC'; el.style.background = on ? 'rgba(35,160,107,.07)' : '#fff'; };
+    set(this.tabSweep.current, k === 'sweep'); set(this.tabBox.current, k === 'box'); set(this.tabZig.current, k === 'zig');
+  }
+
+  // ═══════════ HUD + console ═══════════
+  stamp() { const t = new Date(); const p2 = (n) => (n < 10 ? '0' + n : '' + n); return p2(t.getHours()) + ':' + p2(t.getMinutes()) + ':' + p2(t.getSeconds()); }
+  syncHud() {
+    const t = (r, v) => { if (r.current) r.current.textContent = v; };
+    if (this.rover) { t(this.hudX, this.rover.x); t(this.hudY, this.rover.y); t(this.hudH, this.DIRN[this.rover.h] + this.ARROW[this.DIRN[this.rover.h]]); }
+    t(this.hudStep, this.pc + '/' + this.steps.length);
+    t(this.hudStatus, this.LABELS[this.status] || this.status);
+    const lampC = { IDLE:'#9FBF7E', RUNNING:this.PH, PAUSED:'#F2B23F', HALT:'#EE7A5A', DONE:this.PH }[this.status] || this.PH;
+    if (this.statusLamp.current) {
+      const el = this.statusLamp.current;
+      el.style.background = lampC; el.style.boxShadow = '0 0 0 4px ' + lampC + '22';
+      el.style.animation = this.status === 'RUNNING' ? 'lampGlow 1s ease-in-out infinite' : 'none';
+    }
+    if (this.runLed.current) this.runLed.current.style.animation = this.running ? 'ledBlink .8s steps(1) infinite' : 'none';
+    if (this.pwrBar.current) this.pwrBar.current.style.width = Math.max(6, 100 - this.pc * 2.5) + '%';
+  }
+  log(msg, kind) {
+    const map = { move:'var(--ph,#23A06B)', ok:'#1F9A63', err:'#E0603C', scan:'#C8822A', sys:'#7A6E5E', info:'#A89C8B' };
+    const sym = { err:'✕', ok:'★', scan:'◉', move:'▸', sys:'·', info:'›' }[kind] || '·';
+    this.logEntries.push({ ts:this.stamp(), sym, color: map[kind] || map.move, msg });
+    if (this.logEntries.length > 220) this.logEntries.shift();
+    this.renderConsole();
+  }
+  renderConsole() {
+    const el = this.consoleRef.current; if (!el) return;
+    const esc = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    el.innerHTML = this.logEntries.map(e =>
+      '<div style="display:flex;gap:10px;padding:1.5px 0;color:' + e.color + ';">' +
+      '<span style="color:#C7BBA6;flex:none;">' + e.ts + '</span>' +
+      '<span style="flex:none;width:12px;text-align:center;">' + e.sym + '</span>' +
+      '<span style="flex:1;">' + esc(e.msg) + '</span></div>'
+    ).join('');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  // ═══════════ animation loop ═══════════
+  loop = (now) => {
+    if (this.active) {
+      const op = this.active; const p = Math.min(1, (now - op.t0) / op.dur); const e = this.ease(p);
+      if (op.type === 'move') { this.render.gx = op.from.x + (op.nx - op.from.x) * e; this.render.gy = op.from.y + (op.ny - op.from.y) * e; }
+      else if (op.type === 'turn') { this.render.angle = op.from + (op.to - op.from) * e; }
+      if (p >= 1) this.finishOp();
+    } else if (this.running) { this.startNextIfRunning(); }
+    this.draw(now);
+    this._raf = requestAnimationFrame(this.loop);
+  };
+  ease(p) { return p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2; }
+  roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath(); ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
+  // ═══════════ draw ═══════════
+  draw(now) {
+    const cv = this.canvasRef.current; if (!cv) return;
+    const ctx = cv.getContext('2d');
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const cw = cv.clientWidth || 900, ch = cv.clientHeight || 600;
+    if (cv.width !== Math.round(cw * dpr) || cv.height !== Math.round(ch * dpr)) { cv.width = Math.round(cw * dpr); cv.height = Math.round(ch * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, cw, ch);
+    const bg = ctx.createRadialGradient(cw / 2, ch * 0.42, 40, cw / 2, ch / 2, Math.max(cw, ch) * 0.72);
+    bg.addColorStop(0, '#FBF6EC'); bg.addColorStop(1, '#F1E9D8');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, cw, ch);
+    if (this.view === 'iso') this.drawIso(ctx, cw, ch, now); else this.drawTop(ctx, cw, ch, now);
+  }
+
+  drawTop(ctx, cw, ch, now) {
+    const COLS = this.COLS, ROWS = this.ROWS, pad = 34;
+    const cell = Math.min((cw - 2 * pad) / COLS, (ch - 2 * pad) / ROWS);
+    const gw = cell * COLS, gh = cell * ROWS, ox = (cw - gw) / 2, oy = (ch - gh) / 2;
+    const cc = (gx, gy) => [ox + (gx + 0.5) * cell, oy + (gy + 0.5) * cell];
+    for (let x = 0; x < COLS; x++) for (let y = 0; y < ROWS; y++) {
+      ctx.fillStyle = ((x + y) % 2) ? 'rgba(180,205,150,0.16)' : 'rgba(180,205,150,0.07)';
+      ctx.fillRect(ox + x * cell, oy + y * cell, cell, cell);
+    }
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(150,170,120,0.30)';
+    for (let x = 0; x <= COLS; x++) { ctx.beginPath(); ctx.moveTo(ox + x * cell, oy); ctx.lineTo(ox + x * cell, oy + gh); ctx.stroke(); }
+    for (let y = 0; y <= ROWS; y++) { ctx.beginPath(); ctx.moveTo(ox, oy + y * cell); ctx.lineTo(ox + gw, oy + y * cell); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(150,130,95,0.45)'; ctx.lineWidth = 1.5; ctx.strokeRect(ox, oy, gw, gh);
+    ctx.fillStyle = 'rgba(150,130,95,0.6)'; ctx.font = '9px "JetBrains Mono"'; ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center'; for (let x = 0; x < COLS; x++) ctx.fillText(x, ox + (x + 0.5) * cell, oy - 11);
+    ctx.textAlign = 'right'; for (let y = 0; y < ROWS; y++) ctx.fillText(y, ox - 9, oy + (y + 0.5) * cell);
+    for (const [gx, gy] of this.OBST) {
+      const x = ox + gx * cell, y = oy + gy * cell, m = Math.max(3, cell * 0.1), rad = Math.min(9, (cell - 2 * m) * 0.24);
+      ctx.save(); ctx.shadowColor = 'rgba(120,90,55,0.20)'; ctx.shadowBlur = 7; ctx.shadowOffsetY = 3;
+      ctx.fillStyle = '#E7C6A6'; this.roundRect(ctx, x + m, y + m, cell - 2 * m, cell - 2 * m, rad); ctx.fill(); ctx.restore();
+      ctx.strokeStyle = '#D29B72'; ctx.lineWidth = 1.5; this.roundRect(ctx, x + m, y + m, cell - 2 * m, cell - 2 * m, rad); ctx.stroke();
+      const cxp = x + cell / 2, cyp = y + cell / 2; ctx.fillStyle = 'rgba(150,105,65,0.35)';
+      ctx.beginPath(); ctx.arc(cxp - 4, cyp + 3, 2, 0, 7); ctx.arc(cxp + 5, cyp - 3, 1.6, 0, 7); ctx.fill();
+    }
+    const gc = cc(this.GOAL.x, this.GOAL.y); const pulse = 0.5 + 0.5 * Math.sin(now / 400);
+    ctx.save(); ctx.translate(gc[0], gc[1]);
+    ctx.strokeStyle = this.PH; ctx.globalAlpha = 0.30 + 0.35 * pulse; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, cell * 0.33 * (0.85 + 0.28 * pulse), 0, 7); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.shadowColor = this.PH; ctx.shadowBlur = 14; this.drawStar(ctx, 0, 0, cell * 0.2, cell * 0.09, 5); ctx.fillStyle = this.PH; ctx.fill();
+    ctx.shadowBlur = 0; ctx.restore();
+    if (this.trail.length) {
+      ctx.strokeStyle = this.PH; ctx.globalAlpha = 0.55; ctx.lineWidth = 2.5; ctx.setLineDash([4, 5]);
+      ctx.beginPath(); this.trail.forEach((c, i) => { const p = cc(c.x, c.y); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.stroke(); ctx.setLineDash([]);
+      ctx.globalAlpha = 0.7; ctx.fillStyle = this.PH;
+      for (const c of this.trail) { const p = cc(c.x, c.y); ctx.beginPath(); ctx.arc(p[0], p[1], 2.5, 0, 7); ctx.fill(); }
+      ctx.globalAlpha = 1;
+    }
+    if (this.scanFx) {
+      const p = (now - this.scanFx.t0) / this.scanFx.dur;
+      if (p >= 1) this.scanFx = null;
+      else { const c = cc(this.render.gx, this.render.gy); ctx.strokeStyle = this.PH; ctx.globalAlpha = (1 - p) * 0.7; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(c[0], c[1], p * cell * 3.4, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+    }
+    const rc = cc(this.render.gx, this.render.gy); const a = this.render.angle * Math.PI / 180;
+    const led = this.rover.led || this.PH;
+    ctx.save(); ctx.translate(rc[0], rc[1]); ctx.rotate(a);
+    const hw = cell * 0.22, hh = cell * 0.27;
+    ctx.fillStyle = '#C9B79A'; this.roundRect(ctx, -hw - 5, -hh + 3, 5, hh * 2 - 6, 2); ctx.fill(); this.roundRect(ctx, hw, -hh + 3, 5, hh * 2 - 6, 2); ctx.fill();
+    ctx.shadowColor = 'rgba(120,90,55,0.25)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
+    ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = led; ctx.lineWidth = 2.5;
+    this.roundRect(ctx, -hw, -hh, hw * 2, hh * 2, 7); ctx.fill(); ctx.shadowBlur = 0; ctx.shadowOffsetY = 0; ctx.stroke();
+    ctx.fillStyle = led; ctx.beginPath(); ctx.moveTo(0, -hh - 7); ctx.lineTo(-6, -hh + 1); ctx.lineTo(6, -hh + 1); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#3A322C'; ctx.beginPath(); ctx.arc(-hw * 0.42, -hh * 0.15, 2.6, 0, 7); ctx.arc(hw * 0.42, -hh * 0.15, 2.6, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(58,50,44,0.55)'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.arc(0, hh * 0.28, hw * 0.42, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+    ctx.restore();
+  }
+  drawStar(ctx, cx, cy, R, r, pts) {
+    ctx.beginPath();
+    for (let i = 0; i < pts * 2; i++) { const rad = i % 2 ? r : R; const ang = -Math.PI / 2 + i * Math.PI / pts; ctx[i ? 'lineTo' : 'moveTo'](cx + Math.cos(ang) * rad, cy + Math.sin(ang) * rad); }
+    ctx.closePath();
+  }
+
+  drawIso(ctx, cw, ch, now) {
+    const COLS = this.COLS, ROWS = this.ROWS, tw = 64, th = 32, bh = 26, pad = 44;
+    let minU = 1e9, maxU = -1e9, minV = 1e9, maxV = -1e9;
+    for (const gx of [0, COLS]) for (const gy of [0, ROWS]) for (const gz of [0, bh]) {
+      const u = (gx - gy) * tw / 2, v = (gx + gy) * th / 2 - gz;
+      if (u < minU) minU = u; if (u > maxU) maxU = u; if (v < minV) minV = v; if (v > maxV) maxV = v;
+    }
+    const bw = maxU - minU, bhh = maxV - minV;
+    const scale = Math.min((cw - 2 * pad) / bw, (ch - 2 * pad) / bhh);
+    const oxp = (cw - bw * scale) / 2 - minU * scale, oyp = (ch - bhh * scale) / 2 - minV * scale;
+    const P = (gx, gy, gz) => [oxp + ((gx - gy) * tw / 2) * scale, oyp + ((gx + gy) * th / 2 - (gz || 0)) * scale];
+    for (let gx = 0; gx < COLS; gx++) for (let gy = 0; gy < ROWS; gy++) {
+      const a = P(gx, gy, 0), b = P(gx + 1, gy, 0), c = P(gx + 1, gy + 1, 0), d = P(gx, gy + 1, 0);
+      ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]); ctx.lineTo(d[0], d[1]); ctx.closePath();
+      ctx.fillStyle = ((gx + gy) % 2) ? 'rgba(150,195,120,0.30)' : 'rgba(170,205,140,0.42)'; ctx.fill();
+      ctx.strokeStyle = 'rgba(150,170,120,0.28)'; ctx.lineWidth = 1; ctx.stroke();
+    }
+    if (this.trail.length) {
+      ctx.strokeStyle = this.PH; ctx.globalAlpha = 0.6; ctx.lineWidth = 2.5; ctx.setLineDash([4, 5]);
+      ctx.beginPath(); this.trail.forEach((cl, i) => { const p = P(cl.x + 0.5, cl.y + 0.5, 0); i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }); ctx.stroke(); ctx.setLineDash([]); ctx.globalAlpha = 1;
+    }
+    const sprites = [];
+    for (const [gx, gy] of this.OBST) sprites.push({ d: gx + gy, kind: 'obst', gx, gy });
+    sprites.push({ d: this.GOAL.x + this.GOAL.y, kind: 'goal', gx: this.GOAL.x, gy: this.GOAL.y });
+    sprites.push({ d: this.render.gx + this.render.gy + 0.01, kind: 'rover' });
+    sprites.sort((A, B) => A.d - B.d);
+    for (const s of sprites) {
+      if (s.kind === 'obst') this.isoBlock(ctx, P, s.gx, s.gy, bh);
+      else if (s.kind === 'goal') this.isoGoal(ctx, P, s.gx, s.gy, bh, tw, th, scale, now);
+      else this.isoRover(ctx, P, tw, th, scale);
+    }
+    if (this.scanFx) {
+      const p = (now - this.scanFx.t0) / this.scanFx.dur;
+      if (p >= 1) this.scanFx = null;
+      else { const c = P(this.render.gx + 0.5, this.render.gy + 0.5, 0); ctx.strokeStyle = this.PH; ctx.globalAlpha = (1 - p) * 0.7; ctx.lineWidth = 2; ctx.beginPath(); ctx.ellipse(c[0], c[1], p * tw * scale * 2.6, p * th * scale * 2.6, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1; }
+    }
+  }
+  isoBlock(ctx, P, gx, gy, H) {
+    const A = P(gx, gy, H), B = P(gx + 1, gy, H), C = P(gx + 1, gy + 1, H), D = P(gx, gy + 1, H);
+    const B0 = P(gx + 1, gy, 0), C0 = P(gx + 1, gy + 1, 0), D0 = P(gx, gy + 1, 0);
+    ctx.fillStyle = '#C29066'; ctx.beginPath(); ctx.moveTo(B[0], B[1]); ctx.lineTo(C[0], C[1]); ctx.lineTo(C0[0], C0[1]); ctx.lineTo(B0[0], B0[1]); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,85,50,0.35)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = '#B27F55'; ctx.beginPath(); ctx.moveTo(C[0], C[1]); ctx.lineTo(D[0], D[1]); ctx.lineTo(D0[0], D0[1]); ctx.lineTo(C0[0], C0[1]); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#E7C6A6'; ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.lineTo(C[0], C[1]); ctx.lineTo(D[0], D[1]); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,85,50,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+  isoGoal(ctx, P, gx, gy, H, tw, th, scale, now) {
+    const pulse = 0.5 + 0.5 * Math.sin(now / 380);
+    const base = P(gx + 0.5, gy + 0.5, 0);
+    ctx.strokeStyle = this.PH; ctx.globalAlpha = 0.35 + 0.4 * pulse; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.ellipse(base[0], base[1], (0.34 + 0.12 * pulse) * tw * scale, (0.34 + 0.12 * pulse) * th * scale, 0, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+    const top = P(gx + 0.5, gy + 0.5, H * 2.4);
+    const grd = ctx.createLinearGradient(base[0], base[1], top[0], top[1]);
+    grd.addColorStop(0, this.PH); grd.addColorStop(1, 'rgba(35,160,107,0)');
+    ctx.strokeStyle = grd; ctx.lineWidth = 4; ctx.shadowColor = this.PH; ctx.shadowBlur = 16;
+    ctx.beginPath(); ctx.moveTo(base[0], base[1]); ctx.lineTo(top[0], top[1]); ctx.stroke(); ctx.shadowBlur = 0;
+    const m = P(gx + 0.5, gy + 0.5, H * 1.4);
+    ctx.save(); ctx.translate(m[0], m[1]); ctx.fillStyle = this.PH; ctx.shadowColor = this.PH; ctx.shadowBlur = 14; this.drawStar(ctx, 0, 0, 11, 5, 5); ctx.fill(); ctx.restore(); ctx.shadowBlur = 0;
+  }
+  isoRover(ctx, P, tw, th, scale) {
+    const g = this.render, cx = g.gx + 0.5, cy = g.gy + 0.5, s = 0.32, H = 17;
+    const base = P(cx, cy, 0);
+    ctx.fillStyle = 'rgba(120,90,55,0.22)'; ctx.beginPath(); ctx.ellipse(base[0], base[1], 0.36 * tw * scale, 0.36 * th * scale, 0, 0, 7); ctx.fill();
+    const A = P(cx - s, cy - s, H), B = P(cx + s, cy - s, H), C = P(cx + s, cy + s, H), D = P(cx - s, cy + s, H);
+    const B0 = P(cx + s, cy - s, 0), C0 = P(cx + s, cy + s, 0), D0 = P(cx - s, cy + s, 0);
+    const led = this.rover.led || this.PH;
+    ctx.fillStyle = '#E7DDCB'; ctx.beginPath(); ctx.moveTo(B[0], B[1]); ctx.lineTo(C[0], C[1]); ctx.lineTo(C0[0], C0[1]); ctx.lineTo(B0[0], B0[1]); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#D8CCB6'; ctx.beginPath(); ctx.moveTo(C[0], C[1]); ctx.lineTo(D[0], D[1]); ctx.lineTo(D0[0], D0[1]); ctx.lineTo(C0[0], C0[1]); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = led; ctx.lineWidth = 2.5; ctx.shadowColor = led; ctx.shadowBlur = 12;
+    ctx.beginPath(); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); ctx.lineTo(C[0], C[1]); ctx.lineTo(D[0], D[1]); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.shadowBlur = 0;
+    const a = g.angle * Math.PI / 180, wd = [Math.sin(a), -Math.cos(a)], pp = [-wd[1], wd[0]];
+    const n0 = P(cx + wd[0] * 0.12 + pp[0] * 0.24, cy + wd[1] * 0.12 + pp[1] * 0.24, H);
+    const n1 = P(cx + wd[0] * 0.12 - pp[0] * 0.24, cy + wd[1] * 0.12 - pp[1] * 0.24, H);
+    const tip = P(cx + wd[0] * 0.72, cy + wd[1] * 0.72, H);
+    ctx.fillStyle = led; ctx.shadowColor = led; ctx.shadowBlur = 10;
+    ctx.beginPath(); ctx.moveTo(n0[0], n0[1]); ctx.lineTo(tip[0], tip[1]); ctx.lineTo(n1[0], n1[1]); ctx.closePath(); ctx.fill(); ctx.shadowBlur = 0;
+    const md = P(cx, cy, H + 6); ctx.fillStyle = '#3A322C'; ctx.beginPath(); ctx.arc(md[0] - 3, md[1], 2.2, 0, 7); ctx.arc(md[0] + 3, md[1], 2.2, 0, 7); ctx.fill();
+  }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const app = new RoverLab();
+  app.init();
+  window.rover = app;
+});
+</script>
 </body>
 </html>
