@@ -84,6 +84,8 @@ on('matrix', ({ grid }) => {
 on('display', ({ text }) => { $('hub-display').textContent = text || ''; });
 
 let audioCtx = null;
+// Live oscillators, so Stop/Reset can cut a note that is still sounding.
+const activeBeeps = new Set();
 on('beep', ({ freq, sec }) => {
   try {
     audioCtx = audioCtx || new AudioContext();
@@ -95,8 +97,23 @@ on('beep', ({ freq, sec }) => {
     const dur = Math.min(3, sec / speed);
     osc.start();
     osc.stop(audioCtx.currentTime + dur);
+    const entry = { osc, gain };
+    activeBeeps.add(entry);
+    osc.onended = () => activeBeeps.delete(entry);
   } catch { /* audio blocked until user gesture — fine */ }
 });
+/** Cut every note still playing (Stop / Reset). */
+function silenceBeeps() {
+  if (!audioCtx) return;
+  for (const { osc, gain } of activeBeeps) {
+    try {
+      gain.gain.cancelScheduledValues(audioCtx.currentTime);
+      gain.gain.setValueAtTime(0, audioCtx.currentTime);
+      osc.stop();
+    } catch { /* already stopped */ }
+  }
+  activeBeeps.clear();
+}
 
 // ---------- views ----------
 const view2d = new View2D($('canvas-2d'), engine);
@@ -130,7 +147,17 @@ $('btn-help').onclick = () => help.openHelp();
 const workspace = initBlocks($('blockly-host'));
 const savedBlocks = lsGetJson(LS.blocks);
 if (savedBlocks) {
-  try { deserialize(workspace, savedBlocks); } catch { loadStarter(workspace); }
+  try {
+    deserialize(workspace, savedBlocks);
+  } catch {
+    // Back the raw save up before the starter overwrites it on the next autosave,
+    // so a project that failed to load once isn't lost for good.
+    try {
+      const raw = localStorage.getItem(LS.blocks);
+      if (raw) localStorage.setItem(`${LS.blocks}.bak`, raw);
+    } catch { /* storage blocked */ }
+    loadStarter(workspace);
+  }
 } else {
   loadStarter(workspace);
 }
@@ -226,6 +253,9 @@ function setRunning(next, reason) {
 
 async function run() {
   if (running) return;
+  // Each program starts from the Build-tab drive config; a previous program's
+  // "set movement motors" override must not leak into this run (either runtime).
+  engine.api.resetDrivePorts();
   let code;
   if (ui.editorTab === 'blocks') {
     try {
@@ -255,6 +285,7 @@ async function run() {
 function stop() {
   if (runHandle) runHandle.stop();
   engine.cancelAll('stop');
+  silenceBeeps();
 }
 $('btn-run').onclick = run;
 $('btn-stop').onclick = stop;
@@ -418,7 +449,15 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.25);
   last = now;
-  engine.step(dt * speed);
+  // engine.step() clamps a single call to 0.25 s of sim time. At high speeds (up
+  // to 8×) or on a slow frame, dt*speed can exceed that, so feed it in chunks
+  // instead of silently dropping the overflow.
+  let simDt = dt * speed;
+  while (simDt > 1e-6) {
+    const chunk = Math.min(simDt, 0.25);
+    engine.step(chunk);
+    simDt -= chunk;
+  }
   if (ui.simTab === '2d') view2d.render();
   requestAnimationFrame(frame);
 }

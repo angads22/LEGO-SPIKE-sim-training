@@ -1,6 +1,6 @@
 {
   "name": "spikesim",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "LEGO SPIKE Prime-style robot simulator — blocks + Python, 2D/3D",
   "main": "electron-main.js",
   "bin": "desktop.js",

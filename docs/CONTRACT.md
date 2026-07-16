@@ -218,6 +218,8 @@ promise RESOLVES early (never rejects).
 | `moveStart(steeringPct, speedPct)` | SPIKE steering: `s>=0 → left=v, right=v*(1-s/50)`; mirror for `s<0` |
 | `moveStartTank(leftPct, rightPct)` | |
 | `moveStop()` | both drive motors brake |
+| `setDrivePorts(leftPort, rightPort)` | re-point the movement motors at two motor ports for the rest of the run (both must be motors and differ); supersedes in-flight drive commands. Throws NO_DEVICE / NO_DRIVE like the movement commands |
+| `resetDrivePorts()` | restore the drive ports to the robot's configured (Build-tab) values; `reset()` and the start of each run also restore them |
 | `moveForCm(cm, speedPct, steeringPct=0)` → Promise | distance by **wheel odometry** (average of the two wheels) |
 | `moveTankForCm(cm, leftPct, rightPct)` → Promise | |
 | `turnDegrees(degrees, speedPct)` → Promise | spin in place (tank ±v) until heading delta reached |
@@ -226,7 +228,7 @@ promise RESOLVES early (never rejects).
 | `distanceCm(port)` → number\|null | raycast, max 200cm, null beyond |
 | `colorName(port)` → string | `'none'` if unclear; sample raster 3×3 under sensor, snap to nearest SPIKE color |
 | `reflected(port)` → 0..100 | luminance of sample |
-| `forcePressed(port)` → bool | contact within ~1cm in sensor facing |
+| `forcePressed(port)` → bool | contact on the side the sensor faces — raycast from the body CENTER along `headingDeg + dev.headingDeg` out to `bodyRadius + ~1cm` (a probe from the mount, which sits inside the body radius, could never reach solids the collision system holds at the body edge) |
 | `forceNewtons(port)` → 0..10 | proportional to penetration |
 | `timerSec()` → number / `timerReset()` | sim-time stopwatch |
 | `waitSeconds(sec)` → Promise | sim-time |
@@ -292,8 +294,9 @@ m.get_position()          # 0..359
 m.get_degrees_counted()   # signed, unwrapped
 m.get_speed()             # percent (deg/s ÷ maxDegPerSec × 100, rounded)
 
-mp = MotorPair()                       # defaults to the robot's configured drive ports
-mp = MotorPair('A', 'B')               # explicit is also allowed (validated)
+mp = MotorPair()                       # restores + uses the robot's configured drive ports
+mp = MotorPair('A', 'B')               # points the movement motors at those two ports (reconfigures)
+mp.set_motors('A', 'B')                # same, on an existing pair (the "set movement motors" block)
 mp.move(30, 'cm', steering=0, speed=None)      # units: 'cm','in','rotations','degrees','seconds'
 mp.move_tank(30, 'cm', left_speed=None, right_speed=None)
 mp.start(steering=0, speed=None); mp.start_tank(50, 50); mp.stop()
@@ -339,8 +342,19 @@ generatePython rules:
   ```
   plus one constructor line per port actually used by sensor/motor blocks, scanned from the
   workspace: `motor_c = Motor('C')`, `color_d = ColorSensor('D')`, `distance_e = DistanceSensor('E')`, `force_f = ForceSensor('F')` (variable = `<kind>_<port lowercase>`).
-- Body: only stacks headed by a `spike_start` hat, concatenated in workspace order. Other orphan stacks ignored. No hat → return header + `# add a "when program starts" block`.
+- Body: stacks headed by an enabled `spike_start` hat. Other orphan stacks ignored. No hat → return header + `# add a "when program starts" block`.
+  - **One stack** → its blocks are emitted inline as plain, blocking SPIKE 2 Python (unchanged).
+  - **Two or more stacks** → compile for cooperative multitasking so the stacks run at the same
+    time: each stack becomes a generator function, every pausing step (move/turn/wait/wait_until/
+    beep/motor run-for) is `yield <co_* helper>`, forever/while loops get a `yield co_tick()`, and
+    the program ends with `run_parallel(<stacks>)`. The header then also imports `run_parallel,
+    co_wait, co_wait_until, co_tick` from `spike`. (Skulpt has plain generators but **no
+    `yield from`**, so `run_parallel` drives a per-stack stack of generators by hand.) A program
+    that defines a custom Function containing a pausing step falls back to sequential (one stack
+    after another), since such a Function can't be scheduled cooperatively.
 - Call `generator.init(workspace)` first and include `generator.finish('')` variable preamble if non-empty.
+- `spike_set_movement_motors` ("set movement motors to [LEFT] [RIGHT]", both PORT dropdowns) →
+  `mp.set_motors('<LEFT>', '<RIGHT>')`.
 
 ### Block catalog (exact type names, field/input names, generated Python)
 

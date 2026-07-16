@@ -11,6 +11,7 @@
     { "file": "arm_demo.py", "name": "Arm demo (SPIKE 2)" }
   ],
   "blocks": [
-    { "file": "drive_square.json", "name": "Drive a square (blocks)" }
+    { "file": "drive_square.json", "name": "Drive a square (blocks)" },
+    { "file": "parallel_show.json", "name": "★ Drive + light show at once (blocks)" }
   ]
 }

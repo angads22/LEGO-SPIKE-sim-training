@@ -205,6 +205,10 @@ export class Engine {
     this._yawZeroDeg = 0;
     /** @private sim time at the last timerReset */
     this._timerZeroS = 0;
+    /** @private the robot's configured drive ports, restored on reset(). A
+     *  program may re-point the movement motors at runtime (api.setDrivePorts,
+     *  the "set movement motors" block); reset()/resetDrivePorts() put them back. */
+    this._configuredDrive = null;
 
     this.loadRobot(defaultRobot());
 
@@ -329,6 +333,9 @@ export class Engine {
     // Rebuild live state for motors/sensors/attachments.
     const st = this.state;
     st.robot = robot;
+    // Remember the configured drive ports so a runtime override (setDrivePorts)
+    // can be undone on reset() / at the start of the next program.
+    this._configuredDrive = { leftPort: robot.drive.leftPort, rightPort: robot.drive.rightPort };
     this._devices = {};
     this._targets = {};
     st.motors = {};
@@ -452,6 +459,11 @@ export class Engine {
    */
   reset() {
     const st = this.state;
+    // Undo any runtime "set movement motors" override from a previous program.
+    if (this._configuredDrive && st.robot && st.robot.drive) {
+      st.robot.drive.leftPort = this._configuredDrive.leftPort;
+      st.robot.drive.rightPort = this._configuredDrive.rightPort;
+    }
     let x = 0;
     let y = 0;
     let headingDeg = 0;
@@ -782,10 +794,17 @@ export class Engine {
         const res = raycast(this._solidMap || st.map, wx, wy, st.pose.headingDeg + dev.headingDeg, DISTANCE_MAX_CM);
         s.cm = res.hit ? Math.round(res.distCm * 10) / 10 : null;
       } else if (dev.type === 'force') {
-        const res = raycast(this._solidMap || st.map, wx, wy, st.pose.headingDeg + dev.headingDeg, FORCE_RANGE_CM);
+        // A bumper reads contact on the side it faces. Cast from the body CENTER
+        // along the sensor's facing out to just past the body edge: the collision
+        // system holds solids at the body radius, so a short probe from the mount
+        // (which sits INSIDE that radius) could never reach them — the reason a
+        // rear/side bumper used to never register a press.
+        const bodyR = this._bodyRadius();
+        const reach = bodyR + FORCE_RANGE_CM;
+        const res = raycast(this._solidMap || st.map, st.pose.x, st.pose.y, st.pose.headingDeg + dev.headingDeg, reach);
         if (res.hit) {
           s.pressed = true;
-          const n = ((FORCE_RANGE_CM - res.distCm) / FORCE_RANGE_CM) * 10;
+          const n = ((reach - res.distCm) / FORCE_RANGE_CM) * 10;
           s.newtons = Math.round(clamp(n, 0, 10) * 10) / 10;
         } else {
           s.pressed = false;
@@ -961,6 +980,38 @@ export class Engine {
       motorGetSpeed(port) {
         const p = self._requireDevice(port, 'motor');
         return self.state.motors[p].degPerSec;
+      },
+
+      /**
+       * Re-point the movement (drive) motors at two motor ports for the rest
+       * of the program. Both ports must carry motors and be different; the
+       * "set movement motors" block and MotorPair('A','B') route through here.
+       * In-flight drive commands on the old or new ports are ended first.
+       */
+      setDrivePorts(leftPort, rightPort) {
+        const L = normPort(leftPort);
+        const R = normPort(rightPort);
+        if (!L) throw new Error(`NO_DEVICE: ${String(leftPort)} is not a port A–F`);
+        if (!R) throw new Error(`NO_DEVICE: ${String(rightPort)} is not a port A–F`);
+        const lDev = self._devices[L];
+        const rDev = self._devices[R];
+        if (!lDev || lDev.type !== 'motor') throw new Error(`NO_DEVICE: no motor on port ${L}`);
+        if (!rDev || rDev.type !== 'motor') throw new Error(`NO_DEVICE: no motor on port ${R}`);
+        if (L === R) throw new Error('NO_DRIVE: the two movement motors must be on different ports');
+        const drive = self.state.robot.drive;
+        self._supersede([drive.leftPort, drive.rightPort, L, R]);
+        drive.leftPort = L;
+        drive.rightPort = R;
+      },
+
+      /** Restore the drive ports to the robot's Build-tab configuration. */
+      resetDrivePorts() {
+        if (!self._configuredDrive) return;
+        const drive = self.state.robot.drive;
+        self._supersede([drive.leftPort, drive.rightPort,
+          self._configuredDrive.leftPort, self._configuredDrive.rightPort]);
+        drive.leftPort = self._configuredDrive.leftPort;
+        drive.rightPort = self._configuredDrive.rightPort;
       },
 
       /** Start driving with SPIKE steering (-100..100) at speedPct. */

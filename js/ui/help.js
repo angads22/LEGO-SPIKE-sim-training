@@ -153,6 +153,17 @@ and all. SpikeSim spots those imports automatically and runs the code on a real 
 (the very first run takes a moment while it warms up).</p>
 <p>There is no switch to flip: write either dialect and press <strong>▶ Run</strong>. The small
 badge in the editor's tab bar shows which one will run.</p>
+<h3>Run two things at the same time</h3>
+<p>Drop a <strong>second “when program starts” block</strong> and build a separate stack under it.
+Both stacks now run <strong>at the same time</strong> — so the robot can drive while another stack
+blinks the light matrix, plays sounds, or works an arm motor. Add as many stacks as you like.
+(Under the hood the Blocks tab compiles them into <code>run_parallel(...)</code>; you can see it in
+the live Python preview.) Try <strong>Examples → “Drive + light show at once”</strong>.</p>
+<h3>Pick your driving wheels</h3>
+<p>The <strong>set movement motors to A B</strong> block (Movement category) tells the move and turn
+blocks which two motor ports are your left and right wheels — handy when your build puts the drive
+motors somewhere other than A and B. In Python it’s <code>MotorPair('A', 'B')</code>, which now
+just points the movement motors at those ports for you.</p>
 <h3>Good to know</h3>
 <ul>
   <li><code>mp.turn(90)</code> is a SpikeSim extension: a clean gyro turn on the spot
