@@ -196,16 +196,40 @@ function refreshPreview() {
 let previewTimer = 0;
 workspace.addChangeListener(() => {
   clearTimeout(previewTimer);
-  previewTimer = setTimeout(refreshPreview, 250);
+  previewTimer = setTimeout(() => {
+    refreshPreview();
+    updateBadge(); // stack count may have changed (parallel indicator)
+  }, 250);
 });
 refreshPreview();
 
 // Runtime badge: which Python dialect ▶ Run will use (see help.js "Coding" tab).
+// In the Blocks tab it also counts the "when program starts" stacks — two or
+// more run in parallel (see blocks.js generatePython), and the badge says so.
 const runtimeBadge = $('runtime-badge');
+function countStartStacks() {
+  try {
+    return workspace
+      .getTopBlocks(false)
+      .filter((b) => b.type === 'spike_start')
+      .filter((b) => (typeof b.isEnabled === 'function' ? b.isEnabled() : true))
+      .length;
+  } catch {
+    return 0;
+  }
+}
 function updateBadge() {
-  runtimeBadge.textContent = ui.editorTab === 'blocks'
-    ? 'Blocks → SPIKE 2 Python'
-    : (isSpike3(pyEditor.value) ? 'SPIKE 3 · real Python' : 'SPIKE 2 · classic API');
+  let text;
+  let parallel = false;
+  if (ui.editorTab === 'blocks') {
+    const stacks = countStartStacks();
+    parallel = stacks >= 2;
+    text = parallel ? `Blocks → SPIKE 2 Python · ${stacks} stacks in parallel` : 'Blocks → SPIKE 2 Python';
+  } else {
+    text = isSpike3(pyEditor.value) ? 'SPIKE 3 · real Python' : 'SPIKE 2 · classic API';
+  }
+  runtimeBadge.textContent = text;
+  runtimeBadge.classList.toggle('parallel', parallel);
 }
 let badgeTimer = 0;
 pyEditor.addEventListener('input', () => {
@@ -247,6 +271,10 @@ function setRunning(next, reason) {
   running = next;
   $('btn-run').disabled = next;
   $('btn-stop').disabled = !next;
+  // While a program runs, the Stop button lights up red (css: body.sim-running).
+  // With parallel forever-stacks a program can run indefinitely, so a clear
+  // "something is alive — here is the off switch" cue matters.
+  document.body.classList.toggle('sim-running', next);
   view2d.setRobotDragEnabled(!next);
   emit('run-state', { running: next, reason });
 }

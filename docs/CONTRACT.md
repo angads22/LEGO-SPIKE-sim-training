@@ -554,7 +554,7 @@ from hub import port
 import runloop, motor_pair
 import color_sensor, color
 
-motor_pair.pair(motor_pair.PAIR_1, port.C, port.D)
+motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
 DOWN = port.E
 FRONT = port.B
 TARGET = 50
@@ -638,7 +638,7 @@ Implementation:
 | `motor.run_for_degrees(p, degrees, velocity)` awaitable | motorRunForDegrees(p, vel→pct, degrees) |
 | `motor.run_for_time(p, ms, velocity)` awaitable | motorRun + waitSeconds + motorStop |
 | `motor_pair.PAIR_1/2/3` | 0/1/2 |
-| `motor_pair.pair(id, left, right)` | validate: both ports must be the robot's configured drive ports (either order); else friendly RuntimeError naming the configured ports and the Build tab |
+| `motor_pair.pair(id, left, right)` | points the movement motors at those two ports (left arg = left wheel) via `setDrivePorts` — any two distinct motor ports work; friendly error if a port has no motor. Each move on a pair re-points the drive base to that pair's ports when another pair moved in between |
 | `motor_pair.move(id, steering, *, velocity=360)` | moveStart(steering, vel→pct) |
 | `motor_pair.move_tank(id, lv, rv)` | moveStartTank(lv→pct, rv→pct) |
 | `motor_pair.stop(id)` | moveStop() |

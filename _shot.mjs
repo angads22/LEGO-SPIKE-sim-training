@@ -1,0 +1,17 @@
+import { chromium } from 'playwright-core';
+import { spawn } from 'node:child_process';
+const EXE = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+const PORT = 8801;
+const OUT = process.argv[2] || '/tmp/shot.png';
+const srv = spawn('node', ['server.js'], { env: { ...process.env, PORT: String(PORT) }, stdio: 'ignore' });
+process.on('exit', () => { try { srv.kill('SIGKILL'); } catch {} });
+await new Promise(r => setTimeout(r, 700));
+const browser = await chromium.launch({ executablePath: EXE });
+const page = await browser.newPage({ viewport: { width: 1440, height: 860 } });
+await page.addInitScript(() => { try { localStorage.setItem('spikesim.seenWelcome','1'); } catch(e){} });
+await page.goto(`http://localhost:${PORT}/index.html`, { waitUntil: 'load' });
+await page.waitForFunction(() => window.spikesim && window.spikesim.workspace, { timeout: 15000 });
+await page.waitForTimeout(900);
+await page.screenshot({ path: OUT });
+console.log('saved', OUT);
+await browser.close(); srv.kill('SIGKILL');

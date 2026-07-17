@@ -58,7 +58,7 @@ when your code imports `hub`/`runloop`/`motor_pair`):
 from hub import port
 import runloop, motor_pair, color_sensor
 
-motor_pair.pair(motor_pair.PAIR_1, port.C, port.D)
+motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)   # your movement motors, by port
 
 async def main():
     await motor_pair.move_for_degrees(motor_pair.PAIR_1, 360, 0, velocity=300)

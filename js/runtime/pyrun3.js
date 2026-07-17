@@ -170,6 +170,8 @@ const bridge = {
   motor_run_for_degrees: async_((api, port, pct, deg) => api.motorRunForDegrees(port, pct, deg)),
 
   // drive base
+  set_drive_ports: sync((api, l, r) => api.setDrivePorts(l, r)),
+  reset_drive_ports: sync((api) => api.resetDrivePorts()),
   move_start: sync((api, steering, pct) => api.moveStart(steering, pct)),
   move_start_tank: sync((api, l, r) => api.moveStartTank(l, r)),
   move_stop: sync((api) => api.moveStop()),
@@ -606,23 +608,26 @@ def _mp_pair(pair, left, right):
         raise ValueError('pair should be motor_pair.PAIR_1, PAIR_2 or PAIR_3')
     lp = _port_arg(left)
     rp = _port_arg(right)
-    ports = _sync(_simjs.drive_ports)
-    dl = str(ports[0] or '')
-    dr = str(ports[1] or '')
-    if not dl or not dr:
-        raise RuntimeError('This robot has no drive motors set up. Open the Build tab and choose the two drive motor ports.')
-    if lp == rp or set((lp, rp)) != set((dl, dr)):
-        raise RuntimeError(
-            'motor_pair.pair(...) uses ports ' + lp + ' and ' + rp +
-            ", but this robot's drive motors are left=" + dl + ', right=' + dr +
-            '. Use those ports here, or change the drive ports in the Build tab.')
-    _pairs[pair] = (lp, rp, lp == dr)  # (left, right, reversed vs robot config)
+    if lp == rp:
+        raise ValueError('The two motors of a pair must be on different ports')
+    # Point the movement motors at these ports for the rest of the run, exactly
+    # as written: left argument = left wheel. Errors kindly if a port has no
+    # motor. (This also makes steering honor the pairing order — previously a
+    # reversed pairing steered the wrong way.)
+    _sync(_simjs.set_drive_ports, lp, rp)
+    _pairs[pair] = (lp, rp)
 
 
 def _mp_get(pair):
     entry = _pairs.get(pair)
     if entry is None:
         raise RuntimeError('Call motor_pair.pair(motor_pair.PAIR_1, <left port>, <right port>) before moving a pair.')
+    # Several pairs can exist; make sure the drive base is pointing at THIS
+    # pair's ports before the move (a no-op when they already match — avoid
+    # set_drive_ports then, since re-pointing supersedes in-flight commands).
+    ports = _sync(_simjs.drive_ports)
+    if str(ports[0] or '') != entry[0] or str(ports[1] or '') != entry[1]:
+        _sync(_simjs.set_drive_ports, entry[0], entry[1])
     return entry
 
 
@@ -632,12 +637,8 @@ def _mp_move(pair, steering, *, velocity=360, **_kw):
 
 
 def _mp_move_tank(pair, left_velocity, right_velocity, **_kw):
-    rev = _mp_get(pair)[2]
-    l = _v2p(left_velocity)
-    r = _v2p(right_velocity)
-    if rev:  # user paired (right, left) relative to the robot config
-        l, r = r, l
-    _sync(_simjs.move_start_tank, l, r)
+    _mp_get(pair)
+    _sync(_simjs.move_start_tank, _v2p(left_velocity), _v2p(right_velocity))
 
 
 def _mp_stop(pair, **_kw):
@@ -652,13 +653,9 @@ def _mp_move_for_degrees(pair, degrees, steering, *, velocity=360, **_kw):
 
 
 def _mp_move_tank_for_degrees(pair, degrees, left_velocity, right_velocity, **_kw):
-    rev = _mp_get(pair)[2]
+    _mp_get(pair)
     cm = _num(degrees, 'degrees') / 360.0 * _WHEEL_CM
-    l = _v2p(left_velocity)
-    r = _v2p(right_velocity)
-    if rev:
-        l, r = r, l
-    return _start(_simjs.move_tank_for_cm, cm, l, r)
+    return _start(_simjs.move_tank_for_cm, cm, _v2p(left_velocity), _v2p(right_velocity))
 
 
 def _mp_move_for_time(pair, duration, steering, *, velocity=360, **_kw):
