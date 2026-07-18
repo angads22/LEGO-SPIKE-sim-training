@@ -689,6 +689,13 @@ export class View3D {
     this._lastMatW = -1;   // last mat size the camera was homed for
     this._lastMatH = -1;
 
+    // Pick-up-and-move (same semantics as the 2D view: drag moves the robot,
+    // SHIFT+drag rotates its nose toward the cursor). Disabled while a
+    // program runs (app.js calls setRobotDragEnabled), and the grab preempts
+    // OrbitControls via a capture-phase listener + stopPropagation.
+    this._robotDragEnabled = true;
+    this._dragState = null;  // {mode:'move'|'rotate', offX, offY, pointerId} while grabbing
+
     // live handles filled by _rebuildRobot()
     this._wheelL = null;
     this._wheelR = null;
@@ -738,7 +745,20 @@ export class View3D {
   /** Hide the view: stop the render loop (scene is kept for instant return). */
   deactivate() {
     this._active = false;
+    this._endRobotDrag(null); // don't leave a grab (or disabled controls) behind
     if (this._renderer) this._renderer.setAnimationLoop(null);
+  }
+
+  /**
+   * Enable/disable picking the robot up with the pointer (drag moves it,
+   * SHIFT+drag rotates it toward the cursor). Camera orbit stays enabled.
+   * Mirrors View2D.setRobotDragEnabled — app.js disables both while a
+   * program runs.
+   * @param {boolean} enabled
+   */
+  setRobotDragEnabled(enabled) {
+    this._robotDragEnabled = !!enabled;
+    if (!enabled) this._endRobotDrag(null);
   }
 
   /** Render a single frame outside the animation loop (e.g. while the tab is throttled). */
@@ -842,6 +862,13 @@ export class View3D {
     this._followPos = new THREE.Vector3();
     this._lookPos = new THREE.Vector3();
 
+    // scratch objects for robot pick-up (no per-event allocation)
+    this._ray = new THREE.Raycaster();
+    this._ndc = new THREE.Vector2();
+    this._groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // the mat, y=0
+    this._hitVec = new THREE.Vector3();
+    this._bindRobotDrag();
+
     this._built = true;
     this._rebuildMap();   // also homes the camera (uses defaults when no map yet)
     this._rebuildRobot();
@@ -850,6 +877,112 @@ export class View3D {
       this._ro = new ResizeObserver(() => this.resize());
       this._ro.observe(this._host);
     }
+  }
+
+  // ------------------------------------------------- robot pick-up (drag)
+
+  /**
+   * @private Attach capture-phase pointer handlers for grabbing the robot.
+   * Capture phase runs BEFORE OrbitControls' (bubble) listeners, so a grab
+   * can stopPropagation() and the camera never starts orbiting mid-drag.
+   */
+  _bindRobotDrag() {
+    const el = this._renderer.domElement;
+    el.addEventListener('pointerdown', (e) => this._onDragDown(e), { capture: true });
+    el.addEventListener('pointermove', (e) => this._onDragMove(e), { capture: true });
+    el.addEventListener('pointerup', (e) => this._endRobotDrag(e), { capture: true });
+    el.addEventListener('pointercancel', (e) => this._endRobotDrag(e), { capture: true });
+  }
+
+  /** @private pointer position → normalized device coords (shared scratch) */
+  _pointerNdc(e) {
+    const rect = this._renderer.domElement.getBoundingClientRect();
+    this._ndc.set(
+      ((e.clientX - rect.left) / rect.width) * 2 - 1,
+      -((e.clientY - rect.top) / rect.height) * 2 + 1
+    );
+    return this._ndc;
+  }
+
+  /** @private where the pointer ray meets the mat plane (null when parallel) */
+  _groundPoint(e) {
+    this._ray.setFromCamera(this._pointerNdc(e), this._camera);
+    return this._ray.ray.intersectPlane(this._groundPlane, this._hitVec);
+  }
+
+  /** @private is the pointer over the robot (mesh hit, or near it on the mat)? */
+  _overRobot(e, st) {
+    if (!this._robot || !st || !st.pose) return false;
+    this._ray.setFromCamera(this._pointerNdc(e), this._camera);
+    if (this._ray.intersectObject(this._robot, true).length > 0) return true;
+    // Forgiving grab: a ground-plane point inside the chassis circle counts,
+    // so a slightly-missed click on a small robot still picks it up.
+    const p = this._groundPoint(e);
+    if (!p) return false;
+    const ch = (st.robot && st.robot.chassis) || {};
+    const r = Math.hypot(ch.lengthCm ?? 14, ch.widthCm ?? 11) / 2;
+    return Math.hypot(p.x - st.pose.x, p.z - st.pose.y) <= r;
+  }
+
+  /** @private start a grab when the pointer goes down on the robot */
+  _onDragDown(e) {
+    if (e.button !== 0 || !this._robotDragEnabled || !this._built) return;
+    let st = null;
+    try { st = this._engine.getState(); } catch { return; }
+    if (!this._overRobot(e, st)) return;
+    const p = this._groundPoint(e);
+    if (!p) return;
+    this._dragState = {
+      mode: e.shiftKey ? 'rotate' : 'move',
+      offX: st.pose.x - p.x,
+      offY: st.pose.y - p.z,
+      pointerId: e.pointerId,
+    };
+    this._controls.enabled = false;
+    this._renderer.domElement.style.cursor = 'grabbing';
+    try { this._renderer.domElement.setPointerCapture(e.pointerId); } catch { /* gone */ }
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  /** @private drag → move/rotate the robot; idle → grab-cursor feedback */
+  _onDragMove(e) {
+    if (!this._dragState) {
+      // Hover feedback: show a grab hand over the robot (cheap subtree raycast).
+      if (this._robotDragEnabled && this._built && this._active) {
+        let st = null;
+        try { st = this._engine.getState(); } catch { st = null; }
+        this._renderer.domElement.style.cursor = this._overRobot(e, st) ? 'grab' : '';
+      }
+      return;
+    }
+    const d = this._dragState;
+    const p = this._groundPoint(e);
+    if (!p) return;
+    let st = null;
+    try { st = this._engine.getState(); } catch { return; }
+    if (!st || !st.pose) return;
+    if (d.mode === 'move') {
+      this._engine.setPose(p.x + d.offX, p.z + d.offY, st.pose.headingDeg);
+    } else {
+      // Point the nose at the cursor: 2D world y is 3D z, heading 0 = +x,
+      // clockwise-positive — the same atan2 the 2D view uses.
+      const h = Math.atan2(p.z - st.pose.y, p.x - st.pose.x) * (180 / Math.PI);
+      this._engine.setPose(st.pose.x, st.pose.y, h);
+    }
+    e.stopPropagation();
+  }
+
+  /** @private end a grab: restore controls/cursor (no-op when not dragging) */
+  _endRobotDrag(e) {
+    if (!this._dragState) return;
+    if (e && e.pointerId !== undefined) {
+      try { this._renderer.domElement.releasePointerCapture(e.pointerId); } catch { /* fine */ }
+    }
+    this._dragState = null;
+    if (this._controls) this._controls.enabled = !this._follow;
+    if (this._renderer) this._renderer.domElement.style.cursor = '';
+    if (e) e.stopPropagation();
   }
 
   /** Place the camera so the whole mat is in view. */

@@ -763,3 +763,13 @@ export class ChallengeManager {
 - `ChallengeManager.getStatus()` (js/ui/challenges.js) returns
   `{active, name, goals: [{label, done}], done}` — a cheap per-frame snapshot
   for overlays; goal flags are the same latched values the console ✔ lines use.
+
+## v1.2.1 — 3D robot pick-up
+
+- View3D gained `setRobotDragEnabled(enabled)` (mirrors View2D): drag the robot
+  to move it, SHIFT+drag rotates its nose toward the cursor, with grab/grabbing
+  cursor feedback. Implemented with capture-phase pointer listeners on the
+  renderer canvas that stopPropagation() during a grab so OrbitControls never
+  orbits mid-drag; positions come from raycasting the pointer onto the mat
+  plane (y=0), with a forgiving chassis-circle hit test. app.js disables both
+  views' dragging while a program runs and re-enables after.

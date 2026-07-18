@@ -269,6 +269,7 @@ function setRunning(next, reason) {
   // "something is alive — here is the off switch" cue matters.
   document.body.classList.toggle('sim-running', next);
   view2d.setRobotDragEnabled(!next);
+  view3d.setRobotDragEnabled(!next); // 3D pick-up pauses while a program runs, too
   emit('run-state', { running: next, reason });
 }
 
