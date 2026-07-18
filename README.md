@@ -1,5 +1,7 @@
 # 🤖 SpikeSim
 
+**▶ Try it in your browser: https://angads22.github.io/LEGO-SPIKE-sim-training/** — nothing to install.
+
 A LEGO SPIKE Prime-style robot simulator that runs entirely in your browser — no internet needed.
 Code the robot with **Scratch-style blocks** or **real Python** (SPIKE v2-style API), watch it run
 on a map in **2D and 3D**, draw your own maps, and build the robot with custom **attachments and
