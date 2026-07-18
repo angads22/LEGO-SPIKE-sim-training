@@ -743,3 +743,23 @@ export class ChallengeManager {
 `#tab-blocks #tab-python` (editor tabs) — panes `#blockly-host`, `#python-pane` (contains `#python-editor` textarea + `#python-preview` pre)
 `#tab-2d #tab-3d #tab-build` (sim tabs) — panes `#pane-2d` (contains `#canvas-2d` + `#mapeditor-toolbar`), `#pane-3d` (`#view3d-host`), `#pane-build` (`#builder-host`)
 `#btn-fit #btn-follow #console #hub-display`
+
+## v1.2 — Manual drive mode & match HUD (MoSim-inspired)
+
+- `js/control/drive.js` exports `DriveMode(engine, {isBlocked, onChange})` with
+  `activate()/deactivate()/toggle()` and an `active` flag. While active it turns
+  held keys (W/S/A/D, arrows; Shift = slow) into `engine.api.moveStartTank`
+  targets each animation frame, hard-braking via `moveStop()` when no key is
+  held. Key events on editable targets are ignored; arrows don't scroll the
+  page; a NO_DRIVE robot deactivates with one friendly log line. Activation is
+  refused while `isBlocked()` (a program is running); app.js deactivates drive
+  mode when ▶ Run starts. Wired to the `#btn-drive` toolbar toggle.
+- `js/ui/matchhud.js` exports `MatchHud(host, engine, challenges, getMatchStartT)`
+  — a pointer-events-none overlay in `#pane-2d` showing an FLL match countdown
+  (2:30 of SIM time, red + frozen at 0:00; informational only, never stops the
+  robot) and the active challenge's goals as a live ✔ checklist. The clock arms
+  on the first Run or drive session after a reset (app.js keeps `matchStartT`,
+  cleared on 'sim-reset').
+- `ChallengeManager.getStatus()` (js/ui/challenges.js) returns
+  `{active, name, goals: [{label, done}], done}` — a cheap per-frame snapshot
+  for overlays; goal flags are the same latched values the console ✔ lines use.

@@ -131,6 +131,7 @@ const QUICK_HTML = `
   <tr><td>▶ Run</td><td>Runs the program in whichever editor tab is open — Blocks or Python.</td></tr>
   <tr><td>■ Stop</td><td>Freezes the robot mid-move — always safe, nothing breaks.</td></tr>
   <tr><td>⟲ Reset</td><td>Puts the robot (and any crates) back at their starting spots.</td></tr>
+  <tr><td>🎮 Drive</td><td>Drive the robot yourself — W/S or ↑/↓ to drive, A/D or ←/→ to turn, Shift for slow. Great for practicing a mission before you code it.</td></tr>
   <tr><td>Speed</td><td>Fast-forwards the whole simulation — or slows it down to watch closely.</td></tr>
   <tr><td>Map</td><td>Swaps the mat under the robot: line tracks, a maze, an FLL-style table, or your own maps.</td></tr>
   <tr><td>✏ Edit map</td><td>Opens drawing tools to add walls, lines, and zones — or build a mat from scratch.</td></tr>

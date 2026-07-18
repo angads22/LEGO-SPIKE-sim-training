@@ -15,6 +15,8 @@ import { View3D } from './view/view3d.js';
 import { BuilderPanel } from './ui/builder.js';
 import { Builder3D } from './ui/builder3d.js';
 import { HelpSystem } from './ui/help.js';
+import { DriveMode } from './control/drive.js';
+import { MatchHud } from './ui/matchhud.js';
 
 const $ = (id) => document.getElementById(id);
 const LS = {
@@ -279,8 +281,27 @@ function setRunning(next, reason) {
   emit('run-state', { running: next, reason });
 }
 
+// ---------- manual drive mode (MoSim-style practice driving) ----------
+const drive = new DriveMode(engine, {
+  isBlocked: () => running,
+  onChange: (active) => {
+    $('btn-drive') && $('btn-drive').classList.toggle('active', active);
+    armMatchClock(active);
+  },
+});
+$('btn-drive') && ($('btn-drive').onclick = () => drive.toggle());
+
+// ---------- match clock (armed by the first Run/drive after a reset) ----------
+let matchStartT = null;
+function armMatchClock(go) {
+  if (go && matchStartT === null) matchStartT = engine.getState().t;
+}
+on('sim-reset', () => { matchStartT = null; });
+
 async function run() {
   if (running) return;
+  drive.deactivate(); // hands off the wheel: programs and manual driving are exclusive
+  armMatchClock(true);
   // Each program starts from the Build-tab drive config; a previous program's
   // "set movement motors" override must not leak into this run (either runtime).
   engine.api.resetDrivePorts();
@@ -526,11 +547,12 @@ function frame(now) {
     activatePythonTab: () => activateEditorTab('python'),
   });
   challenges.loadIndex().catch(() => {});
-  emit('log', { text: 'SpikeSim ready. Drag blocks or write Python, then press Run.', level: 'info' });
+  new MatchHud($('pane-2d'), engine, challenges, () => matchStartT);
+  emit('log', { text: 'SpikeSim ready. Drag blocks or write Python, then press Run — or 🎮 Drive it yourself.', level: 'info' });
   requestAnimationFrame(frame);
   // Warm up the Python runtime while the user reads the screen.
   setTimeout(() => preloadPyodide().catch(() => {}), 2000);
   // Debug/power-user handle (also used by automated tests).
-  window.spikesim = { engine, view2d, view3d, workspace, challenges, builder3d, getSpeed: () => speed };
+  window.spikesim = { engine, view2d, view3d, workspace, challenges, builder3d, drive, getSpeed: () => speed };
   help.showWelcome(); // first-run overlay; no-ops once dismissed (spikesim.seenWelcome)
 })();

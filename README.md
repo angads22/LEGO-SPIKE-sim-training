@@ -11,12 +11,12 @@ SpikeSim is a real desktop app — it runs in **its own window**, not a browser 
 Grab the latest installer from the
 [**Releases**](https://github.com/angads22/LEGO-SPIKE-sim-training/releases) page:
 
-- **`SpikeSim Setup 1.1.1.exe`** — the installer (recommended). Run it and follow the
+- **`SpikeSim Setup 1.2.0.exe`** — the installer (recommended). Run it and follow the
   prompts (you can choose the install folder). It adds a **Start Menu** entry and a
   **desktop shortcut**. Launch it and the app opens in its own native window — no browser,
   no console. The whole app (Blockly, Skulpt, three.js, Pyodide) is bundled, so it runs
   **fully offline** with no Node install required.
-- **`SpikeSim 1.1.1.exe`** — a portable single-file version if you'd rather not install;
+- **`SpikeSim 1.2.0.exe`** — a portable single-file version if you'd rather not install;
   just double-click to run.
 
 > **Note:** the app is **unsigned**, so Windows SmartScreen may show a
@@ -38,7 +38,8 @@ Python update live underneath — that's the same program you could type in the 
 |---|---|
 | **Blocks** | SPIKE-style word blocks (Blockly). Generates real Python, shown live below the workspace. Drop **two or more “when program starts” blocks to run stacks at the same time** (drive while blinking lights, etc.), and use **“set movement motors to A B”** to choose your driving-wheel ports. |
 | **Python** | Write SPIKE v2-style Python (`from spike import MotorPair`, …). Runs in-browser via Skulpt. |
-| **2D** | Top-down sim view: trail, sensor rays, live color readings. Drag the robot to place it (Shift+drag rotates). |
+| **2D** | Top-down sim view: trail, sensor rays, live color readings, a 2:30 **match clock**, and live **challenge goal checklist**. Drag the robot to place it (Shift+drag rotates). |
+| **🎮 Drive** | Drive the robot yourself, MoSim-style — W/S or ↑/↓ to drive, A/D or ←/→ to turn, Shift for slow. Perfect for practicing a mission before you code it. |
 | **3D** | three.js view of the same sim. 🎥 Follow chases the robot. |
 | **Build** | Robot builder: wheel size, track width, and devices on ports A–F — arm motors, color/distance/force sensors. |
 | **✏ Edit map** | Draw walls, lines, color zones, obstacles; set the start pose; save/export maps. |
