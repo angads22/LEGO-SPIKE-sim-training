@@ -139,9 +139,15 @@ const SIM_MODULE_JS = [
   '        var h = _parHandles[id];',
   '        return h ? h.state : "done";',
   '    });',
+  '    // handle_error is the CONSUME point: _co_await always calls it once after',
+  '    // the pending-loop ends, so the settled handle is freed here. Without',
+  '    // this, a forever-looping stack (one co_tick handle every 10 ms) would',
+  '    // grow the map without bound for the whole run.',
   '    mod.handle_error = syncFunc(function (id) {',
   '        var h = _parHandles[id];',
-  '        return (h && h.state === "error") ? h.error : null;',
+  '        var err = (h && h.state === "error") ? h.error : null;',
+  '        if (h && h.state !== "pending") { delete _parHandles[id]; }',
+  '        return err;',
   '    });',
   '    mod.await_any = asyncFunc(function (ids) {',
   '        var ps = [];',
@@ -539,13 +545,12 @@ class MotorPair:
         self._default_speed = 50
         self._wheel_cm = _PI * info['wheelDiameterCm']
         if left_port is None and right_port is None:
-            # Start from the robot's configured drive ports (undo any override
-            # a previous program left behind).
-            _sim.reset_drive_ports()
+            # Use the current drive ports. No reset side effect here: the app
+            # restores the Build-tab ports around every run, and constructing a
+            # second MotorPair() mid-program must NOT silently undo an earlier
+            # set_motors() override. (A robot whose drive ports carry no motors
+            # fails at the first move with the friendly NO_DRIVE message.)
             ports = _sim.drive_ports()
-            if ports[0] is None or ports[1] is None:
-                raise RuntimeError("This robot has no drive motors set up. Open the Build tab "
-                                   + "and choose them, or use MotorPair('A', 'B').")
             self.left_port = ports[0]
             self.right_port = ports[1]
         elif left_port is None or right_port is None:

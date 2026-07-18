@@ -794,14 +794,25 @@ export class Engine {
         const res = raycast(this._solidMap || st.map, wx, wy, st.pose.headingDeg + dev.headingDeg, DISTANCE_MAX_CM);
         s.cm = res.hit ? Math.round(res.distCm * 10) / 10 : null;
       } else if (dev.type === 'force') {
-        // A bumper reads contact on the side it faces. Cast from the body CENTER
-        // along the sensor's facing out to just past the body edge: the collision
-        // system holds solids at the body radius, so a short probe from the mount
-        // (which sits INSIDE that radius) could never reach them — the reason a
-        // rear/side bumper used to never register a press.
+        // A bumper reads contact on the side it faces. Cast from the sensor's
+        // MOUNT (so two bumpers on different corners read differently), but
+        // reach out to just past the body edge along the facing: the collision
+        // system holds solids at the body-circle radius, so a fixed 1 cm probe
+        // from a mount inside that circle could never touch them — the reason
+        // a bumper used to never register a press. Distance from the mount to
+        // the circle boundary along direction d: -(v·d) + sqrt((v·d)² − |v|² + R²),
+        // v = mount − center (|v| < R, so the root is always real).
         const bodyR = this._bodyRadius();
-        const reach = bodyR + FORCE_RANGE_CM;
-        const res = raycast(this._solidMap || st.map, st.pose.x, st.pose.y, st.pose.headingDeg + dev.headingDeg, reach);
+        const aRad = (st.pose.headingDeg + dev.headingDeg) * (Math.PI / 180);
+        const dxp = Math.cos(aRad);
+        const dyp = Math.sin(aRad);
+        const vx = wx - st.pose.x;
+        const vy = wy - st.pose.y;
+        const vd = vx * dxp + vy * dyp;
+        const disc = Math.max(0, vd * vd - (vx * vx + vy * vy) + bodyR * bodyR);
+        const toEdge = Math.max(0, -vd + Math.sqrt(disc));
+        const reach = toEdge + FORCE_RANGE_CM;
+        const res = raycast(this._solidMap || st.map, wx, wy, st.pose.headingDeg + dev.headingDeg, reach);
         if (res.hit) {
           s.pressed = true;
           const n = ((reach - res.distCm) / FORCE_RANGE_CM) * 10;
@@ -999,6 +1010,10 @@ export class Engine {
         if (!rDev || rDev.type !== 'motor') throw new Error(`NO_DEVICE: no motor on port ${R}`);
         if (L === R) throw new Error('NO_DRIVE: the two movement motors must be on different ports');
         const drive = self.state.robot.drive;
+        // Re-pointing to the CURRENT ports is a no-op — do not supersede. In a
+        // parallel program, stack B's "set movement motors A B" must not abort
+        // stack A's in-flight move on those same ports.
+        if (drive.leftPort === L && drive.rightPort === R) return;
         self._supersede([drive.leftPort, drive.rightPort, L, R]);
         drive.leftPort = L;
         drive.rightPort = R;
@@ -1008,6 +1023,8 @@ export class Engine {
       resetDrivePorts() {
         if (!self._configuredDrive) return;
         const drive = self.state.robot.drive;
+        if (drive.leftPort === self._configuredDrive.leftPort
+          && drive.rightPort === self._configuredDrive.rightPort) return; // already there
         self._supersede([drive.leftPort, drive.rightPort,
           self._configuredDrive.leftPort, self._configuredDrive.rightPort]);
         drive.leftPort = self._configuredDrive.leftPort;

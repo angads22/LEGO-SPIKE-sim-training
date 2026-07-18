@@ -7,7 +7,7 @@ import { Engine } from './core/engine.js';
 import { defaultRobot, fallbackMap } from './core/defaults.js';
 import { runPython } from './runtime/pyrun.js';
 import { runPython3, isSpike3, preloadPyodide } from './runtime/pyrun3.js';
-import { initBlocks, generatePython, serialize, deserialize, loadStarter } from './blocks/blocks.js';
+import { initBlocks, generatePython, serialize, deserialize, loadStarter, programMode } from './blocks/blocks.js';
 import { ChallengeManager } from './ui/challenges.js';
 import { View2D } from './view/view2d.js';
 import { MapEditor } from './view/mapeditor.js';
@@ -206,27 +206,18 @@ workspace.addChangeListener(() => {
 refreshPreview();
 
 // Runtime badge: which Python dialect ▶ Run will use (see help.js "Coding" tab).
-// In the Blocks tab it also counts the "when program starts" stacks — two or
-// more run in parallel (see blocks.js generatePython), and the badge says so.
+// In the Blocks tab it also shows parallel mode, via the same programMode()
+// that generatePython() uses — the badge can never disagree with the program
+// (e.g. the sequential fallback when a Function holds a pausing step).
 const runtimeBadge = $('runtime-badge');
-function countStartStacks() {
-  try {
-    return workspace
-      .getTopBlocks(false)
-      .filter((b) => b.type === 'spike_start')
-      .filter((b) => (typeof b.isEnabled === 'function' ? b.isEnabled() : true))
-      .length;
-  } catch {
-    return 0;
-  }
-}
 function updateBadge() {
   let text;
   let parallel = false;
   if (ui.editorTab === 'blocks') {
-    const stacks = countStartStacks();
-    parallel = stacks >= 2;
-    text = parallel ? `Blocks → SPIKE 2 Python · ${stacks} stacks in parallel` : 'Blocks → SPIKE 2 Python';
+    let mode = { stacks: 0, parallel: false };
+    try { mode = programMode(workspace); } catch { /* workspace mid-mutation */ }
+    parallel = mode.parallel;
+    text = parallel ? `Blocks → SPIKE 2 Python · ${mode.stacks} stacks in parallel` : 'Blocks → SPIKE 2 Python';
   } else {
     text = isSpike3(pyEditor.value) ? 'SPIKE 3 · real Python' : 'SPIKE 2 · classic API';
   }
@@ -327,6 +318,10 @@ async function run() {
   const res = await runHandle.promise;
   runHandle = null;
   engine.cancelAll('program-end'); // a real hub stops its motors when the program ends
+  // Undo any "set movement motors" override NOW, not just at the next run:
+  // otherwise the Build tab would read (and could Apply/save!) the override,
+  // and 🎮 Drive would steer the wrong wheels until a Reset.
+  engine.api.resetDrivePorts();
   setRunning(false, res.stopped ? 'stopped' : 'finished');
   if (!res.ok) emit('log', { text: res.error, level: 'error' });
   else emit('log', { text: res.stopped ? '— stopped —' : '— finished —', level: 'info' });

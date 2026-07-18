@@ -729,8 +729,13 @@ function registerGenerators() {
     g['controls_whileUntil'] = (block, generator) => {
       const code = origWhileUntil.call(null, block, generator);
       if (!PARALLEL || typeof code !== 'string') return code;
-      // Insert the tick as the first line of the loop body (after `while …:`).
-      return code.replace(/\n/, `\n${generator.INDENT}yield co_tick()\n`);
+      // Insert the tick as the first line of the loop body — but only when the
+      // output has the expected `while <one-line cond>:\n` head. Anything else
+      // (a future Blockly emitting a multi-line condition) passes through
+      // unpatched rather than risking a tick spliced mid-condition.
+      const m = code.match(/^(while [^\n]*:\n)/);
+      if (!m) return code;
+      return m[1] + generator.INDENT + 'yield co_tick()\n' + code.slice(m[1].length);
     };
   }
 }
@@ -811,6 +816,31 @@ function anyProcedureBlocksParallel(workspace) {
 }
 
 /**
+ * The enabled "when program starts" hats, in workspace order.
+ * @param {!Blockly.Workspace} workspace
+ * @returns {!Array<!Blockly.Block>}
+ */
+function programStacks(workspace) {
+  return workspace
+    .getTopBlocks(true)
+    .filter((b) => b.type === 'spike_start')
+    .filter((b) => (typeof b.isEnabled === 'function' ? b.isEnabled() : true));
+}
+
+/**
+ * How ▶ Run will treat this workspace: the number of enabled "when program
+ * starts" stacks, and whether they compile for parallel execution. The single
+ * source of truth shared by generatePython() and the app's runtime badge, so
+ * the badge can never disagree with the generated program.
+ * @param {!Blockly.Workspace} workspace
+ * @returns {{stacks: number, parallel: boolean}}
+ */
+export function programMode(workspace) {
+  const stacks = programStacks(workspace).length;
+  return { stacks, parallel: stacks >= 2 && !anyProcedureBlocksParallel(workspace) };
+}
+
+/**
  * Generate a COMPLETE runnable SPIKE-style Python program from the workspace:
  * a fixed header, one constructor line per used port, then the "when program
  * starts" stacks.
@@ -830,7 +860,6 @@ function anyProcedureBlocksParallel(workspace) {
 export function generatePython(workspace) {
   ensureRegistered();
   const generator = python.pythonGenerator;
-  generator.init(workspace);
 
   // Constructor lines for every port actually used by motor/sensor blocks.
   const used = new Map(); // varName → {port, line}
@@ -846,47 +875,53 @@ export function generatePython(workspace) {
     .sort((a, b) => (a.port < b.port ? -1 : a.port > b.port ? 1 : 0))
     .map((u) => u.line);
 
-  // Enabled "when program starts" hats, in workspace order.
-  const hats = workspace
-    .getTopBlocks(true)
-    .filter((b) => b.type === 'spike_start')
-    .filter((b) => (typeof b.isEnabled === 'function' ? b.isEnabled() : true));
+  const hats = programStacks(workspace);
+
+  // One full generation pass: stack bodies (BEFORE finish() so imports/vars
+  // land in the preamble), procedure defs, then the preamble itself.
+  const attempt = (par) => {
+    generator.init(workspace);
+    const stacks = []; // { name, body } for parallel mode
+    const bodies = []; // plain bodies for sequential mode
+    PARALLEL = par;
+    try {
+      for (const hat of hats) {
+        const code = generator.blockToCode(hat.getNextBlock()); // '' when nothing attached
+        if (typeof code !== 'string' || !code.trim()) continue;
+        const body = code.replace(/\s+$/, '');
+        if (par) {
+          const name = `_stack_${stacks.length + 1}`;
+          stacks.push({ name, body: generator.prefixLines(body, generator.INDENT) });
+        } else {
+          bodies.push(body);
+        }
+      }
+      // Emit every procedure DEFINITION so its `def` lands in the preamble via
+      // finish() (procedure defs are their own top blocks, not spike_start hats).
+      for (const block of workspace.getTopBlocks(false)) {
+        if (block.type === 'procedures_defnoreturn' || block.type === 'procedures_defreturn') {
+          generator.blockToCode(block);
+        }
+      }
+    } finally {
+      PARALLEL = false;
+    }
+    return { stacks, bodies, preamble: generator.finish('').trim() };
+  };
 
   // Two or more stacks → compile for real parallelism (unless a Function holds
   // a pausing step, which cooperative scheduling can't safely drive).
-  const parallel = hats.length >= 2 && !anyProcedureBlocksParallel(workspace);
-  const fellBackFromParallel = hats.length >= 2 && !parallel;
-
-  const stacks = []; // { name, body } for parallel mode
-  const bodies = []; // plain bodies for sequential mode
-  PARALLEL = parallel;
-  try {
-    // Generate stack bodies BEFORE finish() so imports/variables land in the preamble.
-    for (const hat of hats) {
-      const code = generator.blockToCode(hat.getNextBlock()); // '' when nothing attached
-      if (typeof code !== 'string' || !code.trim()) continue;
-      const body = code.replace(/\s+$/, '');
-      if (parallel) {
-        const name = `_stack_${stacks.length + 1}`;
-        stacks.push({ name, body: generator.prefixLines(body, generator.INDENT) });
-      } else {
-        bodies.push(body);
-      }
-    }
-
-    // Emit every procedure DEFINITION so its `def` lands in the preamble via
-    // finish() (procedure defs are their own top blocks, not spike_start hats).
-    for (const block of workspace.getTopBlocks(false)) {
-      if (block.type === 'procedures_defnoreturn' || block.type === 'procedures_defreturn') {
-        generator.blockToCode(block);
-      }
-    }
-  } finally {
-    PARALLEL = false;
+  let { parallel } = programMode(workspace);
+  let out = attempt(parallel);
+  // Safety net for PAR_UNSAFE_IN_PROC drift: if a procedure still compiled to
+  // a generator (a `yield` reached the preamble), calling it as a statement
+  // would silently skip its body — regenerate the whole program sequentially.
+  if (parallel && /\byield /.test(out.preamble)) {
+    parallel = false;
+    out = attempt(false);
   }
-
-  // Let the generator emit its import/variable/function preamble (may be empty).
-  const preamble = generator.finish('').trim();
+  const fellBackFromParallel = hats.length >= 2 && !parallel;
+  const { stacks, bodies, preamble } = out;
 
   const imports = parallel
     ? 'from spike import PrimeHub, Motor, MotorPair, ColorSensor, DistanceSensor, ForceSensor, '

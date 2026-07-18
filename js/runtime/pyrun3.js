@@ -603,7 +603,11 @@ motor = _module(
 _pairs = {}
 
 
+_active_pair = None  # which pair the drive base currently points at
+
+
 def _mp_pair(pair, left, right):
+    global _active_pair
     if pair not in (0, 1, 2):
         raise ValueError('pair should be motor_pair.PAIR_1, PAIR_2 or PAIR_3')
     lp = _port_arg(left)
@@ -616,18 +620,20 @@ def _mp_pair(pair, left, right):
     # reversed pairing steered the wrong way.)
     _sync(_simjs.set_drive_ports, lp, rp)
     _pairs[pair] = (lp, rp)
+    _active_pair = pair
 
 
 def _mp_get(pair):
+    global _active_pair
     entry = _pairs.get(pair)
     if entry is None:
         raise RuntimeError('Call motor_pair.pair(motor_pair.PAIR_1, <left port>, <right port>) before moving a pair.')
-    # Several pairs can exist; make sure the drive base is pointing at THIS
-    # pair's ports before the move (a no-op when they already match — avoid
-    # set_drive_ports then, since re-pointing supersedes in-flight commands).
-    ports = _sync(_simjs.drive_ports)
-    if str(ports[0] or '') != entry[0] or str(ports[1] or '') != entry[1]:
+    # Several pairs can exist; re-point the drive base only when a DIFFERENT
+    # pair moved last. Tracked Python-side so the single-pair common case (a
+    # 50 Hz control loop) pays no extra JS-bridge crossing per move.
+    if _active_pair != pair:
         _sync(_simjs.set_drive_ports, entry[0], entry[1])
+        _active_pair = pair
     return entry
 
 

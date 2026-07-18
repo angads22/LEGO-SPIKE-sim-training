@@ -51,9 +51,7 @@ export class DriveMode {
     /** @private held driving channels */
     this._held = new Set();
     this._shift = false;
-    /** @private last (l,r) sent, to skip redundant engine calls */
-    this._lastL = 0;
-    this._lastR = 0;
+    /** @private true while a non-zero tank target is set (brake idempotency) */
     this._moving = false;
     this._raf = 0;
     this._keydown = (e) => this._onKey(e, true);
@@ -106,15 +104,24 @@ export class DriveMode {
 
   // ------------------------------------------------------------ private
 
-  /** @private keydown/keyup: track channels + Shift, swallow page scroll */
+  /** @private keydown/keyup: track channels + Shift, swallow page scroll.
+   *  Only keyDOWN respects editable targets — a keyUP must ALWAYS clear its
+   *  channel, or releasing W with the caret in the editor (mid-drive click)
+   *  would leave 'fwd' held and the robot running away. */
   _onKey(e, down) {
-    if (isEditableTarget(e.target)) return;
-    if (e.key === 'Shift') { this._shift = down; return; }
+    if (e.key === 'Shift') {
+      if (!down || !isEditableTarget(e.target)) this._shift = down;
+      return;
+    }
     const ch = KEY_CHANNEL[e.code];
     if (!ch) return;
-    e.preventDefault(); // arrows must not scroll the page while driving
-    if (down) this._held.add(ch);
-    else this._held.delete(ch);
+    if (down) {
+      if (isEditableTarget(e.target)) return; // typing, not driving
+      e.preventDefault(); // arrows must not scroll the page while driving
+      this._held.add(ch);
+    } else {
+      this._held.delete(ch);
+    }
   }
 
   /** @private one frame: held keys → tank targets (or a hard brake) */
@@ -130,12 +137,11 @@ export class DriveMode {
       this._brake();
       return;
     }
-    if (this._moving && l === this._lastL && r === this._lastR) return;
+    // moveStartTank just (re)sets target velocities — calling it every frame
+    // with the same values is harmless, so no dedup bookkeeping is needed.
     try {
       this.engine.api.moveStartTank(l, r);
       this._moving = true;
-      this._lastL = l;
-      this._lastR = r;
     } catch (err) {
       this.deactivate();
       emit('log', { text: `Can't drive: ${(err && err.message) || err}. Check the Build tab.`, level: 'error' });
@@ -146,8 +152,6 @@ export class DriveMode {
   _brake() {
     if (!this._moving) return;
     this._moving = false;
-    this._lastL = 0;
-    this._lastR = 0;
     try { this.engine.api.moveStop(); } catch { /* robot without drive motors */ }
   }
 }

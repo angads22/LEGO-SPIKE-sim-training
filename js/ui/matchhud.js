@@ -54,6 +54,10 @@ export class MatchHud {
 
   /** @private one frame: clock + goals (DOM writes only on change) */
   _render() {
+    // Skip everything while the 2D pane is hidden (3D/Build tab active):
+    // offsetParent is null under display:none, and rendering an invisible
+    // overlay would just churn goal arrays + HTML strings every frame.
+    if (this.el.offsetParent === null) return;
     const startT = this.getMatchStartT();
     let remaining = MATCH_SECONDS;
     if (startT != null) {
@@ -91,5 +95,9 @@ export class MatchHud {
 
 /** Escape text for innerHTML interpolation (labels come from challenge JSON). */
 function escapeHtml(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
