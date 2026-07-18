@@ -1,11 +1,20 @@
 name: Build and release SpikeSim desktop app
 
-# Cut a release by pushing a tag like v1.1.0:
-#   git tag v1.1.0 && git push origin v1.1.0
+# Cut a release either way:
+#   - push a tag like v1.2.0:   git tag v1.2.0 && git push origin v1.2.0
+#   - or run this workflow from the Actions tab (workflow_dispatch) with the
+#     tag input (e.g. v1.2.0) — the release step then creates that tag at the
+#     built commit.
 on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to create (e.g. v1.2.0)'
+        required: true
+        default: 'v1.2.0'
 
 permissions:
   contents: write   # needed for softprops/action-gh-release to create the Release
@@ -37,6 +46,9 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          # On a tag push this is the pushed tag; on workflow_dispatch the tag
+          # from the input is created at the built commit.
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           # Ships the Electron installer + portable exe:
           #   "SpikeSim Setup X.Y.Z.exe"  (NSIS installer — primary artifact)
           #   "SpikeSim X.Y.Z.exe"        (portable, no install)
