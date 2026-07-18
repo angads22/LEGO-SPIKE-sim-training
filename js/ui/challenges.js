@@ -165,6 +165,21 @@ export class ChallengeManager {
     this._rebuildOptions(); // refresh the "(n/6)" counter on the hint entry
   }
 
+  /**
+   * Live snapshot for UI overlays (match HUD): the active challenge's name and
+   * per-goal done flags. Cheap to call every frame.
+   * @returns {{active: boolean, name: string, goals: Array<{label: string, done: boolean}>, done: boolean}}
+   */
+  getStatus() {
+    const ch = this._active;
+    if (!ch) return { active: false, name: '', goals: [], done: false };
+    const goals = (ch.goals || []).map((g, i) => ({
+      label: g.label || describeGoal(g),
+      done: !!this._satisfied[i],
+    }));
+    return { active: true, name: ch.name || this._activeFile, goals, done: this._done };
+  }
+
   // ------------------------------------------------------------ private
 
   /**

@@ -74,6 +74,26 @@ function portVar(kind, port) {
   return `${kind}_${String(port).toLowerCase()}`;
 }
 
+/**
+ * Whether generatePython() is currently emitting cooperative code for parallel
+ * "when program starts" stacks. When true, blocking steps compile to
+ * `yield <cooperative helper>` and loops get a cooperative tick, so the
+ * stacks interleave instead of blocking the whole program. See generatePython().
+ * @type {boolean}
+ */
+let PARALLEL = false;
+
+/**
+ * Block types that pause the program (or can loop forever). A custom Function
+ * that contains one of these can't be scheduled cooperatively, so a program
+ * that defines such a Function falls back to running its stacks one after
+ * another. See generatePython().
+ */
+const PAR_UNSAFE_IN_PROC = new Set([
+  'spike_move_cm', 'spike_turn', 'spike_wait_seconds', 'spike_wait_until',
+  'spike_beep', 'spike_motor_run_for', 'spike_forever', 'controls_whileUntil',
+]);
+
 // ---------------------------------------------------------------------------
 // Block definitions (JSON)
 // ---------------------------------------------------------------------------
@@ -88,7 +108,20 @@ const BLOCK_DEFS = [
     message0: 'when program starts',
     nextStatement: null, // no previousStatement: reads as a hat in zelos
     colour: COLOURS.movement,
-    tooltip: 'Your program begins here. Put blocks below it!',
+    tooltip: 'Your program begins here. Put blocks below it! Add a second one to run two things at the same time.',
+  },
+  {
+    type: 'spike_set_movement_motors',
+    message0: 'set movement motors to %1 %2',
+    args0: [
+      { type: 'field_dropdown', name: 'LEFT', options: PORT_OPTIONS },
+      { type: 'field_dropdown', name: 'RIGHT', options: PORT_OPTIONS },
+    ],
+    inputsInline: true,
+    previousStatement: null,
+    nextStatement: null,
+    colour: COLOURS.movement,
+    tooltip: 'Pick which two motor ports are your left and right driving wheels.',
   },
   {
     type: 'spike_move_cm',
@@ -423,6 +456,7 @@ const TOOLBOX = {
       colour: COLOURS.movement,
       contents: [
         { kind: 'block', type: 'spike_start' },
+        { kind: 'block', type: 'spike_set_movement_motors', fields: { LEFT: 'A', RIGHT: 'B' } },
         {
           kind: 'block',
           type: 'spike_move_cm',
@@ -545,14 +579,20 @@ function registerGenerators() {
   // ----- Movement -----
   g['spike_start'] = () => ''; // entry marker only; bodies are collected by generatePython()
 
+  g['spike_set_movement_motors'] = (block) => {
+    const l = block.getFieldValue('LEFT');
+    const r = block.getFieldValue('RIGHT');
+    return `mp.set_motors('${l}', '${r}')\n`;
+  };
+
   g['spike_move_cm'] = (block, generator) => {
     const d = numValue(block, generator, 'DIST', block.getFieldValue('DIR') === 'BACK');
-    return `mp.move(${d}, 'cm')\n`;
+    return PARALLEL ? `yield mp.co_move(${d}, 'cm')\n` : `mp.move(${d}, 'cm')\n`;
   };
 
   g['spike_turn'] = (block, generator) => {
     const d = numValue(block, generator, 'DEG', block.getFieldValue('DIR') === 'LEFT');
-    return `mp.turn(${d})\n`;
+    return PARALLEL ? `yield mp.co_turn(${d})\n` : `mp.turn(${d})\n`;
   };
 
   g['spike_move_start'] = (block, generator) => {
@@ -580,7 +620,7 @@ function registerGenerators() {
       block.getFieldValue('UNIT')
     ] || 'run_for_rotations';
     const val = numValue(block, generator, 'VAL', block.getFieldValue('DIR') === 'CCW');
-    return `${v}.${method}(${val})\n`;
+    return PARALLEL ? `yield ${v}.co_${method}(${val})\n` : `${v}.${method}(${val})\n`;
   };
 
   g['spike_motor_start'] = (block) => {
@@ -616,7 +656,9 @@ function registerGenerators() {
   g['spike_beep'] = (block, generator) => {
     const note = numValue(block, generator, 'NOTE', false, '60');
     const sec = numValue(block, generator, 'SEC', false, '0.2');
-    return `hub.speaker.beep(${note}, ${sec})\n`;
+    return PARALLEL
+      ? `yield hub.speaker.co_beep(${note}, ${sec})\n`
+      : `hub.speaker.beep(${note}, ${sec})\n`;
   };
 
   g['spike_print'] = (block, generator) => {
@@ -663,18 +705,39 @@ function registerGenerators() {
   // ----- Control -----
   g['spike_wait_seconds'] = (block, generator) => {
     const sec = numValue(block, generator, 'SEC', false, '1');
-    return `wait_for_seconds(${sec})\n`;
+    return PARALLEL ? `yield co_wait(${sec})\n` : `wait_for_seconds(${sec})\n`;
   };
 
   g['spike_wait_until'] = (block, generator) => {
     const cond = generator.valueToCode(block, 'COND', python.Order.NONE) || 'False';
-    return `wait_until(lambda: bool(${cond}))\n`;
+    return PARALLEL
+      ? `yield co_wait_until(lambda: bool(${cond}))\n`
+      : `wait_until(lambda: bool(${cond}))\n`;
   };
 
   g['spike_forever'] = (block, generator) => {
     const branch = generator.statementToCode(block, 'DO') || generator.PASS;
+    // In parallel mode a forever loop must yield each pass, or a stack with no
+    // pausing step inside would freeze the others (and the whole program).
+    if (PARALLEL) return `while True:\n${generator.INDENT}yield co_tick()\n${branch}`;
     return `while True:\n${branch}`;
   };
+
+  // Give `while`/`until` loops the same cooperative tick in parallel mode.
+  const origWhileUntil = g['controls_whileUntil'];
+  if (typeof origWhileUntil === 'function') {
+    g['controls_whileUntil'] = (block, generator) => {
+      const code = origWhileUntil.call(null, block, generator);
+      if (!PARALLEL || typeof code !== 'string') return code;
+      // Insert the tick as the first line of the loop body — but only when the
+      // output has the expected `while <one-line cond>:\n` head. Anything else
+      // (a future Blockly emitting a multi-line condition) passes through
+      // unpatched rather than risking a tick spliced mid-condition.
+      const m = code.match(/^(while [^\n]*:\n)/);
+      if (!m) return code;
+      return m[1] + generator.INDENT + 'yield co_tick()\n' + code.slice(m[1].length);
+    };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -736,16 +799,67 @@ export function initBlocks(hostEl) {
 }
 
 /**
+ * Does any custom Function (procedure) contain a block that pauses the program
+ * or can loop forever? Those can't be scheduled cooperatively, so a program
+ * with such a Function runs its stacks sequentially even when it has several.
+ * @param {!Blockly.Workspace} workspace
+ * @returns {boolean}
+ */
+function anyProcedureBlocksParallel(workspace) {
+  for (const block of workspace.getTopBlocks(false)) {
+    if (block.type !== 'procedures_defnoreturn' && block.type !== 'procedures_defreturn') continue;
+    for (const kid of block.getDescendants(false)) {
+      if (PAR_UNSAFE_IN_PROC.has(kid.type)) return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * The enabled "when program starts" hats, in workspace order.
+ * @param {!Blockly.Workspace} workspace
+ * @returns {!Array<!Blockly.Block>}
+ */
+function programStacks(workspace) {
+  return workspace
+    .getTopBlocks(true)
+    .filter((b) => b.type === 'spike_start')
+    .filter((b) => (typeof b.isEnabled === 'function' ? b.isEnabled() : true));
+}
+
+/**
+ * How ▶ Run will treat this workspace: the number of enabled "when program
+ * starts" stacks, and whether they compile for parallel execution. The single
+ * source of truth shared by generatePython() and the app's runtime badge, so
+ * the badge can never disagree with the generated program.
+ * @param {!Blockly.Workspace} workspace
+ * @returns {{stacks: number, parallel: boolean}}
+ */
+export function programMode(workspace) {
+  const stacks = programStacks(workspace).length;
+  return { stacks, parallel: stacks >= 2 && !anyProcedureBlocksParallel(workspace) };
+}
+
+/**
  * Generate a COMPLETE runnable SPIKE-style Python program from the workspace:
- * fixed header, one constructor line per used port, then the bodies of every
- * "when program starts" stack (in workspace order). Orphan stacks are ignored.
+ * a fixed header, one constructor line per used port, then the "when program
+ * starts" stacks.
+ *
+ * With a single stack (the common case) the stack's blocks are emitted inline
+ * as plain, blocking SPIKE 2 Python. With TWO OR MORE stacks the program is
+ * compiled for cooperative multitasking: each stack becomes a generator
+ * function whose pausing steps `yield` a cooperative helper, and
+ * `run_parallel(...)` at the end runs them all at the same time — so the robot
+ * can, say, drive while a second stack blinks the light matrix. (A program that
+ * defines a Function containing a pausing step can't be scheduled that way and
+ * falls back to running its stacks one after another.)
+ *
  * @param {!Blockly.Workspace} workspace
  * @returns {string} Python source
  */
 export function generatePython(workspace) {
   ensureRegistered();
   const generator = python.pythonGenerator;
-  generator.init(workspace);
 
   // Constructor lines for every port actually used by motor/sensor blocks.
   const used = new Map(); // varName → {port, line}
@@ -761,34 +875,60 @@ export function generatePython(workspace) {
     .sort((a, b) => (a.port < b.port ? -1 : a.port > b.port ? 1 : 0))
     .map((u) => u.line);
 
-  // Bodies: only stacks headed by an enabled spike_start hat, in workspace order.
-  // (Generate BEFORE finish() so imports/variables land in the preamble.)
-  const hats = workspace
-    .getTopBlocks(true)
-    .filter((b) => b.type === 'spike_start')
-    .filter((b) => (typeof b.isEnabled === 'function' ? b.isEnabled() : true));
-  const bodies = [];
-  for (const hat of hats) {
-    const code = generator.blockToCode(hat.getNextBlock()); // '' when nothing attached
-    if (typeof code === 'string' && code.trim()) bodies.push(code.replace(/\s+$/, ''));
-  }
+  const hats = programStacks(workspace);
 
-  // Functions: generate every procedure DEFINITION so its `def` is emitted.
-  // These are their own top blocks (not spike_start hats); their generators
-  // register the def into the generator's definitions_ as a side effect, so
-  // finish() below folds them into the preamble. Without this, function blocks
-  // would produce calls to undefined functions.
-  for (const block of workspace.getTopBlocks(false)) {
-    if (block.type === 'procedures_defnoreturn' || block.type === 'procedures_defreturn') {
-      generator.blockToCode(block);
+  // One full generation pass: stack bodies (BEFORE finish() so imports/vars
+  // land in the preamble), procedure defs, then the preamble itself.
+  const attempt = (par) => {
+    generator.init(workspace);
+    const stacks = []; // { name, body } for parallel mode
+    const bodies = []; // plain bodies for sequential mode
+    PARALLEL = par;
+    try {
+      for (const hat of hats) {
+        const code = generator.blockToCode(hat.getNextBlock()); // '' when nothing attached
+        if (typeof code !== 'string' || !code.trim()) continue;
+        const body = code.replace(/\s+$/, '');
+        if (par) {
+          const name = `_stack_${stacks.length + 1}`;
+          stacks.push({ name, body: generator.prefixLines(body, generator.INDENT) });
+        } else {
+          bodies.push(body);
+        }
+      }
+      // Emit every procedure DEFINITION so its `def` lands in the preamble via
+      // finish() (procedure defs are their own top blocks, not spike_start hats).
+      for (const block of workspace.getTopBlocks(false)) {
+        if (block.type === 'procedures_defnoreturn' || block.type === 'procedures_defreturn') {
+          generator.blockToCode(block);
+        }
+      }
+    } finally {
+      PARALLEL = false;
     }
+    return { stacks, bodies, preamble: generator.finish('').trim() };
+  };
+
+  // Two or more stacks → compile for real parallelism (unless a Function holds
+  // a pausing step, which cooperative scheduling can't safely drive).
+  let { parallel } = programMode(workspace);
+  let out = attempt(parallel);
+  // Safety net for PAR_UNSAFE_IN_PROC drift: if a procedure still compiled to
+  // a generator (a `yield` reached the preamble), calling it as a statement
+  // would silently skip its body — regenerate the whole program sequentially.
+  if (parallel && /\byield /.test(out.preamble)) {
+    parallel = false;
+    out = attempt(false);
   }
+  const fellBackFromParallel = hats.length >= 2 && !parallel;
+  const { stacks, bodies, preamble } = out;
 
-  // Let the generator emit its import/variable/function preamble (may be empty).
-  const preamble = generator.finish('').trim();
-
+  const imports = parallel
+    ? 'from spike import PrimeHub, Motor, MotorPair, ColorSensor, DistanceSensor, ForceSensor, '
+      + 'run_parallel, co_wait, co_wait_until, co_tick'
+    : 'from spike import PrimeHub, Motor, MotorPair, ColorSensor, DistanceSensor, ForceSensor';
   const header = [
-    'from spike import PrimeHub, Motor, MotorPair, ColorSensor, DistanceSensor, ForceSensor',
+    imports,
     'from spike.control import wait_for_seconds, wait_until, Timer',
     'hub = PrimeHub()',
     'mp = MotorPair()',
@@ -798,8 +938,20 @@ export function generatePython(workspace) {
 
   const parts = [header];
   if (preamble) parts.push(preamble);
+  if (fellBackFromParallel) {
+    parts.push('# Note: a Function uses a movement/wait step, so these stacks run\n'
+      + '# one after another. Put those steps directly under each start block to\n'
+      + '# have the stacks run at the same time.');
+  }
   if (hats.length === 0) {
     parts.push('# add a "when program starts" block');
+  } else if (parallel) {
+    if (stacks.length) {
+      for (const s of stacks) parts.push(`def ${s.name}():\n${s.body}`);
+      parts.push(`run_parallel(${stacks.map((s) => s.name).join(', ')})`);
+    } else {
+      parts.push('# add some blocks under "when program starts"');
+    }
   } else if (bodies.length) {
     parts.push(bodies.join('\n\n'));
   }

@@ -95,6 +95,76 @@ const SIM_MODULE_JS = [
   '        });',
   '    }',
   '',
+  '    // ---- parallel scheduler support (see spike.run_parallel) ----',
+  '    // begin_* starts an engine command NOW and returns an integer handle; the',
+  '    // Python scheduler polls it with handle_state/handle_error and suspends on',
+  '    // await_any until at least one in-flight command settles. The stored',
+  '    // promises NEVER reject (the error is captured on the handle), so await_any',
+  '    // always resolves cleanly.',
+  '    var _parHandles = {};',
+  '    var _parNextId = 0;',
+  '    function beginPromise(p) {',
+  '        var id = ++_parNextId;',
+  '        var h = { state: "pending", error: null };',
+  '        _parHandles[id] = h;',
+  '        h.settled = Promise.resolve(p).then(',
+  '            function () { h.state = "done"; },',
+  '            function (err) {',
+  '                h.state = "error";',
+  '                h.error = (err && err.message !== undefined) ? String(err.message) : String(err);',
+  '            }',
+  '        );',
+  '        return id;',
+  '    }',
+  '    mod.par_reset = syncFunc(function () { _parHandles = {}; _parNextId = 0; });',
+  '    mod.begin_move_for_cm = syncFunc(function (cm, speed, steering) {',
+  '        return beginPromise(engine().api.moveForCm(cm, speed, steering));',
+  '    });',
+  '    mod.begin_move_tank_for_cm = syncFunc(function (cm, l, r) {',
+  '        return beginPromise(engine().api.moveTankForCm(cm, l, r));',
+  '    });',
+  '    mod.begin_turn_degrees = syncFunc(function (degrees, speed) {',
+  '        return beginPromise(engine().api.turnDegrees(degrees, speed));',
+  '    });',
+  '    mod.begin_motor_run_for_degrees = syncFunc(function (port, speed, degrees) {',
+  '        return beginPromise(engine().api.motorRunForDegrees(port, speed, degrees));',
+  '    });',
+  '    mod.begin_wait_seconds = syncFunc(function (sec) {',
+  '        return beginPromise(engine().api.waitSeconds(sec));',
+  '    });',
+  '    mod.begin_beep = syncFunc(function (freq, sec) {',
+  '        return beginPromise(engine().api.beep(freq, sec));',
+  '    });',
+  '    mod.handle_state = syncFunc(function (id) {',
+  '        var h = _parHandles[id];',
+  '        return h ? h.state : "done";',
+  '    });',
+  '    // handle_error is the CONSUME point: _co_await always calls it once after',
+  '    // the pending-loop ends, so the settled handle is freed here. Without',
+  '    // this, a forever-looping stack (one co_tick handle every 10 ms) would',
+  '    // grow the map without bound for the whole run.',
+  '    mod.handle_error = syncFunc(function (id) {',
+  '        var h = _parHandles[id];',
+  '        var err = (h && h.state === "error") ? h.error : null;',
+  '        if (h && h.state !== "pending") { delete _parHandles[id]; }',
+  '        return err;',
+  '    });',
+  '    mod.await_any = asyncFunc(function (ids) {',
+  '        var ps = [];',
+  '        if (ids && ids.length) {',
+  '            for (var i = 0; i < ids.length; i++) {',
+  '                var h = _parHandles[ids[i]];',
+  '                if (h) ps.push(h.settled);',
+  '            }',
+  '        }',
+  '        if (!ps.length) return Promise.resolve(null);',
+  '        return Promise.race(ps).then(function () { return null; });',
+  '    });',
+  '',
+  '    // ---- movement motors (drive base) config ----',
+  '    mod.set_drive_ports = syncFunc(function (left, right) { engine().api.setDrivePorts(left, right); });',
+  '    mod.reset_drive_ports = syncFunc(function () { engine().api.resetDrivePorts(); });',
+  '',
   '    // ---- robot info ----',
   '    mod.drive_info = syncFunc(function () {',
   '        var d = engine().getRobotConfig().drive || {};',
@@ -142,6 +212,7 @@ const SIM_MODULE_JS = [
   '    mod.force_newtons = syncFunc(function (port) { return engine().api.forceNewtons(port); });',
   '',
   '    // ---- time, display, sound ----',
+  '    mod.sim_time = syncFunc(function () { return engine().getState().t; });',
   '    mod.timer_sec = syncFunc(function () { return engine().api.timerSec(); });',
   '    mod.timer_reset = syncFunc(function () { engine().api.timerReset(); });',
   '    mod.wait_seconds = asyncFunc(function (sec) { return engine().api.waitSeconds(sec); });',
@@ -181,7 +252,9 @@ def _check_port(port):
 
 
 def _num(value, what):
-    if not isinstance(value, (int, float)):
+    # bool is a subclass of int; reject it so True/False is not silently 1/0
+    # (matches the SPIKE 3 runtime).
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise TypeError(what + " should be a number (got " + type(value).__name__ + ")")
     return value
 
@@ -206,6 +279,114 @@ def _sign(x):
     if x < 0:
         return -1
     return 1
+
+
+# ---------------------------------------------------------------------------
+# Cooperative multitasking: run several "when program starts" stacks at once.
+# ---------------------------------------------------------------------------
+# When a blocks program has two or more "when program starts" hats, each stack
+# compiles to a generator function; every blocking step (move, turn, wait, beep,
+# a motor run-for, a loop tick) is 'yield <co_* generator>'. run_parallel() then
+# round-robins the stacks so they truly run at the same time. See
+# js/blocks/blocks.js (generatePython) and docs/CONTRACT.md.
+#
+# NOTE: Skulpt supports plain generators but NOT 'yield from', so the scheduler
+# drives a per-stack stack of generators by hand (that is our 'yield from'):
+# a stack yields a co_* generator, which we push and drive; a co_* generator
+# yields an integer engine handle, which is what the stack is waiting on.
+
+_PAR_LOOP_TICK = 0.01  # tiny sim pause injected at the top of forever/while loops
+_PAR_DONE = object()   # sentinel: a stack has finished
+
+
+def _co_await(handle):
+    """Yield an engine handle until that command settles, then re-raise any
+    error. A Stop/reset arrives as SIM_STOPPED, which the runtime treats as a
+    clean stop rather than a program error.
+    """
+    while _sim.handle_state(handle) == 'pending':
+        yield handle
+    err = _sim.handle_error(handle)
+    if err is not None:
+        raise RuntimeError(err)
+
+
+def co_wait(seconds):
+    """Cooperative wait: pause THIS stack for that many sim seconds while the
+    other stacks keep running. Use as 'yield co_wait(1)'."""
+    if not isinstance(seconds, (int, float)):
+        raise TypeError('seconds should be a number (got ' + type(seconds).__name__ + ')')
+    if seconds < 0:
+        raise ValueError('seconds should be 0 or more')
+    yield _co_await(_sim.begin_wait_seconds(seconds))
+
+
+def co_wait_until(condition, timeout=None):
+    """Cooperative wait_until: yield until condition() is true (or timeout)."""
+    if timeout is not None and not isinstance(timeout, (int, float)):
+        raise TypeError('timeout should be a number of seconds, or None')
+    start = _sim.sim_time()  # absolute clock: a timer.reset() must not skew the timeout
+    while not condition():
+        if timeout is not None and _sim.sim_time() - start >= timeout:
+            return
+        yield co_wait(0.02)
+
+
+def co_tick():
+    """A tiny cooperative pause injected at the top of forever/while loops so a
+    stack whose loop has no blocking step still lets the others run."""
+    yield co_wait(_PAR_LOOP_TICK)
+
+
+def run_parallel(*stacks):
+    """Run several stack functions at the same time (cooperative multitasking).
+
+    Each argument is a function. A stack pauses (handing control to the others)
+    whenever it does 'yield <a co_* generator>'; run_parallel keeps every stack
+    advancing until they all finish.
+    """
+    _sim.par_reset()
+
+    def advance(gstack):
+        # Drive a stack's generator stack until it waits on an engine command
+        # (return the handle int) or empties (return _PAR_DONE). A yielded
+        # generator is a nested cooperative step: push into it — this hand-rolled
+        # delegation is our 'yield from', which Skulpt lacks.
+        while gstack:
+            try:
+                y = next(gstack[-1])
+            except StopIteration:
+                gstack.pop()
+                continue
+            if hasattr(y, '__next__'):
+                gstack.append(y)
+                continue
+            return y  # an engine handle: this stack is now waiting on it
+        return _PAR_DONE
+
+    tasks = []
+    for fn in stacks:
+        g = fn()
+        # A stack with at least one pausing step is a generator; a stack with
+        # only instant steps already ran to completion when we called it.
+        if not hasattr(g, '__next__'):
+            continue
+        gstack = [g]
+        wait = advance(gstack)
+        if wait is not _PAR_DONE:
+            tasks.append({'stack': gstack, 'wait': wait})
+
+    while tasks:
+        # Advance every stack whose engine command has finished.
+        for task in tasks:
+            if _sim.handle_state(task['wait']) != 'pending':
+                task['wait'] = advance(task['stack'])
+        tasks = [t for t in tasks if t['wait'] is not _PAR_DONE]
+        if not tasks:
+            break
+        # Everything left is paused on an engine command; sleep the VM until the
+        # earliest one settles (the sim keeps advancing while we wait).
+        _sim.await_any([t['wait'] for t in tasks])
 
 
 class _MotionSensor:
@@ -254,6 +435,15 @@ class _Speaker:
             raise ValueError('seconds should be 0 or more')
         freq = 440.0 * 2 ** ((note - 69) / 12.0)
         _sim.beep(freq, seconds)
+
+    def co_beep(self, note=60, seconds=0.2):
+        """Cooperative beep for parallel stacks."""
+        note = _num(note, 'note')
+        seconds = _num(seconds, 'seconds')
+        if seconds < 0:
+            raise ValueError('seconds should be 0 or more')
+        freq = 440.0 * 2 ** ((note - 69) / 12.0)
+        yield _co_await(_sim.begin_beep(freq, seconds))
 
 
 class PrimeHub:
@@ -311,6 +501,27 @@ class Motor:
         _sim.wait_seconds(abs(sec))
         _sim.motor_stop(self.port)
 
+    # Cooperative twins for parallel stacks; each yields
+    # to the scheduler while the motor turns instead of blocking the program.
+    def co_run_for_degrees(self, degrees, speed=None):
+        s = self._speed(speed)
+        d = _num(degrees, 'degrees')
+        if s == 0 or d == 0:
+            return
+        yield _co_await(_sim.begin_motor_run_for_degrees(self.port, abs(s), d * _sign(s)))
+
+    def co_run_for_rotations(self, rotations, speed=None):
+        yield self.co_run_for_degrees(_num(rotations, 'rotations') * 360, speed)
+
+    def co_run_for_seconds(self, seconds, speed=None):
+        s = self._speed(speed)
+        sec = _num(seconds, 'seconds')
+        if s == 0 or sec == 0:
+            return
+        _sim.motor_run(self.port, s * _sign(sec))
+        yield co_wait(abs(sec))
+        _sim.motor_stop(self.port)
+
     def get_position(self):
         return int(round(_sim.motor_position(self.port))) % 360
 
@@ -324,29 +535,40 @@ class Motor:
 class MotorPair:
     """Two motors driving together, like the wheels of a driving base.
 
-    MotorPair() uses the robot's configured drive ports.
+    MotorPair() uses the robot's configured (Build-tab) drive ports.
+    MotorPair('A', 'B') points the movement motors at those two ports instead,
+    for the rest of the program (see set_motors / the "set movement motors" block).
     """
 
     def __init__(self, left_port=None, right_port=None):
         info = _sim.drive_info()
-        ports = _sim.drive_ports()
+        self._default_speed = 50
+        self._wheel_cm = _PI * info['wheelDiameterCm']
         if left_port is None and right_port is None:
-            left_port, right_port = ports[0], ports[1]
+            # Use the current drive ports. No reset side effect here: the app
+            # restores the Build-tab ports around every run, and constructing a
+            # second MotorPair() mid-program must NOT silently undo an earlier
+            # set_motors() override. (A robot whose drive ports carry no motors
+            # fails at the first move with the friendly NO_DRIVE message.)
+            ports = _sim.drive_ports()
+            self.left_port = ports[0]
+            self.right_port = ports[1]
         elif left_port is None or right_port is None:
             raise ValueError("MotorPair needs two ports, like MotorPair('A', 'B')")
         else:
-            left_port = _check_port(left_port)
-            right_port = _check_port(right_port)
-            if ports[0] is None or ports[1] is None:
-                raise RuntimeError('This robot has no drive motors set up. Open the Build tab and choose them.')
-            if left_port != ports[0] or right_port != ports[1]:
-                raise RuntimeError("MotorPair('" + left_port + "', '" + right_port + "') does not match "
-                                   + "this robot's drive motors (left='" + str(ports[0]) + "', right='"
-                                   + str(ports[1]) + "'). Change the ports here or in the Build tab.")
+            self.set_motors(left_port, right_port)
+
+    def set_motors(self, left_port, right_port):
+        """Point the movement motors at two ports (like the SPIKE "set movement
+        motors" block). Both ports must have a motor, and they must differ.
+        """
+        left_port = _check_port(left_port)
+        right_port = _check_port(right_port)
+        if left_port == right_port:
+            raise ValueError('The two movement motors must be on different ports')
+        _sim.set_drive_ports(left_port, right_port)  # errors here if a port has no motor
         self.left_port = left_port
         self.right_port = right_port
-        self._default_speed = 50
-        self._wheel_cm = _PI * info['wheelDiameterCm']
 
     def set_default_speed(self, speed):
         self._default_speed = _speed_value(speed)
@@ -424,6 +646,31 @@ class MotorPair:
             return
         _sim.turn_degrees(d * _sign(s), abs(s))
 
+    # Cooperative twins for parallel stacks.
+    def co_move(self, amount, unit='cm', steering=0, speed=None):
+        amount = _num(amount, 'amount')
+        steering = _steering_value(steering)
+        s = self._speed(speed)
+        if unit == 'seconds':
+            if s == 0 or amount == 0:
+                self.stop()
+                return
+            _sim.move_start(steering, s * _sign(amount))
+            yield co_wait(abs(amount))
+            _sim.move_stop()
+            return
+        cm = self._to_cm(abs(amount), unit) * _sign(amount) * _sign(s)
+        if cm == 0 or s == 0:
+            return
+        yield _co_await(_sim.begin_move_for_cm(cm, abs(s), steering))
+
+    def co_turn(self, degrees, speed=None):
+        d = _num(degrees, 'degrees')
+        s = self._speed(speed)
+        if d == 0 or s == 0:
+            return
+        yield _co_await(_sim.begin_turn_degrees(d * _sign(s), abs(s)))
+
 
 class ColorSensor:
     """A color sensor. Looks straight down at the mat."""
@@ -498,9 +745,9 @@ def wait_until(condition, timeout=None):
     """
     if timeout is not None and not isinstance(timeout, (int, float)):
         raise TypeError('timeout should be a number of seconds, or None')
-    start = _sim.timer_sec()
+    start = _sim.sim_time()  # absolute clock: a timer.reset() must not skew the timeout
     while not condition():
-        if timeout is not None and _sim.timer_sec() - start >= timeout:
+        if timeout is not None and _sim.sim_time() - start >= timeout:
             return
         _sim.wait_seconds(0.02)
 

@@ -672,6 +672,15 @@ export class Builder3D {
   saveAs(name) {
     const key = String(name == null || name === '' ? this.copy.name || 'My Robot' : name).trim();
     if (!key) return false;
+    // Same gate as apply(): a build that can't be applied (NaN from a half-typed
+    // field, clashing ports, ...) must not be persisted — it would "save" fine
+    // but then load as an unusable robot.
+    const problems = validateRobot3D(this.copy);
+    this._refreshValidation();
+    if (problems.length) {
+      emit('log', { text: `Fix the highlighted problems before saving "${key}".`, level: 'error' });
+      return false;
+    }
     const builds = readBuilds(localStorage);
     builds[key] = deepCopy(this.copy);
     const ok = writeBuilds(localStorage, builds);

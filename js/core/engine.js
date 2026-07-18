@@ -205,6 +205,10 @@ export class Engine {
     this._yawZeroDeg = 0;
     /** @private sim time at the last timerReset */
     this._timerZeroS = 0;
+    /** @private the robot's configured drive ports, restored on reset(). A
+     *  program may re-point the movement motors at runtime (api.setDrivePorts,
+     *  the "set movement motors" block); reset()/resetDrivePorts() put them back. */
+    this._configuredDrive = null;
 
     this.loadRobot(defaultRobot());
 
@@ -329,6 +333,9 @@ export class Engine {
     // Rebuild live state for motors/sensors/attachments.
     const st = this.state;
     st.robot = robot;
+    // Remember the configured drive ports so a runtime override (setDrivePorts)
+    // can be undone on reset() / at the start of the next program.
+    this._configuredDrive = { leftPort: robot.drive.leftPort, rightPort: robot.drive.rightPort };
     this._devices = {};
     this._targets = {};
     st.motors = {};
@@ -452,6 +459,11 @@ export class Engine {
    */
   reset() {
     const st = this.state;
+    // Undo any runtime "set movement motors" override from a previous program.
+    if (this._configuredDrive && st.robot && st.robot.drive) {
+      st.robot.drive.leftPort = this._configuredDrive.leftPort;
+      st.robot.drive.rightPort = this._configuredDrive.rightPort;
+    }
     let x = 0;
     let y = 0;
     let headingDeg = 0;
@@ -782,10 +794,28 @@ export class Engine {
         const res = raycast(this._solidMap || st.map, wx, wy, st.pose.headingDeg + dev.headingDeg, DISTANCE_MAX_CM);
         s.cm = res.hit ? Math.round(res.distCm * 10) / 10 : null;
       } else if (dev.type === 'force') {
-        const res = raycast(this._solidMap || st.map, wx, wy, st.pose.headingDeg + dev.headingDeg, FORCE_RANGE_CM);
+        // A bumper reads contact on the side it faces. Cast from the sensor's
+        // MOUNT (so two bumpers on different corners read differently), but
+        // reach out to just past the body edge along the facing: the collision
+        // system holds solids at the body-circle radius, so a fixed 1 cm probe
+        // from a mount inside that circle could never touch them — the reason
+        // a bumper used to never register a press. Distance from the mount to
+        // the circle boundary along direction d: -(v·d) + sqrt((v·d)² − |v|² + R²),
+        // v = mount − center (|v| < R, so the root is always real).
+        const bodyR = this._bodyRadius();
+        const aRad = (st.pose.headingDeg + dev.headingDeg) * (Math.PI / 180);
+        const dxp = Math.cos(aRad);
+        const dyp = Math.sin(aRad);
+        const vx = wx - st.pose.x;
+        const vy = wy - st.pose.y;
+        const vd = vx * dxp + vy * dyp;
+        const disc = Math.max(0, vd * vd - (vx * vx + vy * vy) + bodyR * bodyR);
+        const toEdge = Math.max(0, -vd + Math.sqrt(disc));
+        const reach = toEdge + FORCE_RANGE_CM;
+        const res = raycast(this._solidMap || st.map, wx, wy, st.pose.headingDeg + dev.headingDeg, reach);
         if (res.hit) {
           s.pressed = true;
-          const n = ((FORCE_RANGE_CM - res.distCm) / FORCE_RANGE_CM) * 10;
+          const n = ((reach - res.distCm) / FORCE_RANGE_CM) * 10;
           s.newtons = Math.round(clamp(n, 0, 10) * 10) / 10;
         } else {
           s.pressed = false;
@@ -961,6 +991,44 @@ export class Engine {
       motorGetSpeed(port) {
         const p = self._requireDevice(port, 'motor');
         return self.state.motors[p].degPerSec;
+      },
+
+      /**
+       * Re-point the movement (drive) motors at two motor ports for the rest
+       * of the program. Both ports must carry motors and be different; the
+       * "set movement motors" block and MotorPair('A','B') route through here.
+       * In-flight drive commands on the old or new ports are ended first.
+       */
+      setDrivePorts(leftPort, rightPort) {
+        const L = normPort(leftPort);
+        const R = normPort(rightPort);
+        if (!L) throw new Error(`NO_DEVICE: ${String(leftPort)} is not a port A–F`);
+        if (!R) throw new Error(`NO_DEVICE: ${String(rightPort)} is not a port A–F`);
+        const lDev = self._devices[L];
+        const rDev = self._devices[R];
+        if (!lDev || lDev.type !== 'motor') throw new Error(`NO_DEVICE: no motor on port ${L}`);
+        if (!rDev || rDev.type !== 'motor') throw new Error(`NO_DEVICE: no motor on port ${R}`);
+        if (L === R) throw new Error('NO_DRIVE: the two movement motors must be on different ports');
+        const drive = self.state.robot.drive;
+        // Re-pointing to the CURRENT ports is a no-op — do not supersede. In a
+        // parallel program, stack B's "set movement motors A B" must not abort
+        // stack A's in-flight move on those same ports.
+        if (drive.leftPort === L && drive.rightPort === R) return;
+        self._supersede([drive.leftPort, drive.rightPort, L, R]);
+        drive.leftPort = L;
+        drive.rightPort = R;
+      },
+
+      /** Restore the drive ports to the robot's Build-tab configuration. */
+      resetDrivePorts() {
+        if (!self._configuredDrive) return;
+        const drive = self.state.robot.drive;
+        if (drive.leftPort === self._configuredDrive.leftPort
+          && drive.rightPort === self._configuredDrive.rightPort) return; // already there
+        self._supersede([drive.leftPort, drive.rightPort,
+          self._configuredDrive.leftPort, self._configuredDrive.rightPort]);
+        drive.leftPort = self._configuredDrive.leftPort;
+        drive.rightPort = self._configuredDrive.rightPort;
       },
 
       /** Start driving with SPIKE steering (-100..100) at speedPct. */

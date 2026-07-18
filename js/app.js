@@ -7,7 +7,7 @@ import { Engine } from './core/engine.js';
 import { defaultRobot, fallbackMap } from './core/defaults.js';
 import { runPython } from './runtime/pyrun.js';
 import { runPython3, isSpike3, preloadPyodide } from './runtime/pyrun3.js';
-import { initBlocks, generatePython, serialize, deserialize, loadStarter } from './blocks/blocks.js';
+import { initBlocks, generatePython, serialize, deserialize, loadStarter, programMode } from './blocks/blocks.js';
 import { ChallengeManager } from './ui/challenges.js';
 import { View2D } from './view/view2d.js';
 import { MapEditor } from './view/mapeditor.js';
@@ -15,6 +15,8 @@ import { View3D } from './view/view3d.js';
 import { BuilderPanel } from './ui/builder.js';
 import { Builder3D } from './ui/builder3d.js';
 import { HelpSystem } from './ui/help.js';
+import { DriveMode } from './control/drive.js';
+import { MatchHud } from './ui/matchhud.js';
 
 const $ = (id) => document.getElementById(id);
 const LS = {
@@ -84,6 +86,8 @@ on('matrix', ({ grid }) => {
 on('display', ({ text }) => { $('hub-display').textContent = text || ''; });
 
 let audioCtx = null;
+// Live oscillators, so Stop/Reset can cut a note that is still sounding.
+const activeBeeps = new Set();
 on('beep', ({ freq, sec }) => {
   try {
     audioCtx = audioCtx || new AudioContext();
@@ -95,8 +99,23 @@ on('beep', ({ freq, sec }) => {
     const dur = Math.min(3, sec / speed);
     osc.start();
     osc.stop(audioCtx.currentTime + dur);
+    const entry = { osc, gain };
+    activeBeeps.add(entry);
+    osc.onended = () => activeBeeps.delete(entry);
   } catch { /* audio blocked until user gesture — fine */ }
 });
+/** Cut every note still playing (Stop / Reset). */
+function silenceBeeps() {
+  if (!audioCtx) return;
+  for (const { osc, gain } of activeBeeps) {
+    try {
+      gain.gain.cancelScheduledValues(audioCtx.currentTime);
+      gain.gain.setValueAtTime(0, audioCtx.currentTime);
+      osc.stop();
+    } catch { /* already stopped */ }
+  }
+  activeBeeps.clear();
+}
 
 // ---------- views ----------
 const view2d = new View2D($('canvas-2d'), engine);
@@ -130,7 +149,17 @@ $('btn-help').onclick = () => help.openHelp();
 const workspace = initBlocks($('blockly-host'));
 const savedBlocks = lsGetJson(LS.blocks);
 if (savedBlocks) {
-  try { deserialize(workspace, savedBlocks); } catch { loadStarter(workspace); }
+  try {
+    deserialize(workspace, savedBlocks);
+  } catch {
+    // Back the raw save up before the starter overwrites it on the next autosave,
+    // so a project that failed to load once isn't lost for good.
+    try {
+      const raw = localStorage.getItem(LS.blocks);
+      if (raw) localStorage.setItem(`${LS.blocks}.bak`, raw);
+    } catch { /* storage blocked */ }
+    loadStarter(workspace);
+  }
 } else {
   loadStarter(workspace);
 }
@@ -169,16 +198,31 @@ function refreshPreview() {
 let previewTimer = 0;
 workspace.addChangeListener(() => {
   clearTimeout(previewTimer);
-  previewTimer = setTimeout(refreshPreview, 250);
+  previewTimer = setTimeout(() => {
+    refreshPreview();
+    updateBadge(); // stack count may have changed (parallel indicator)
+  }, 250);
 });
 refreshPreview();
 
 // Runtime badge: which Python dialect ▶ Run will use (see help.js "Coding" tab).
+// In the Blocks tab it also shows parallel mode, via the same programMode()
+// that generatePython() uses — the badge can never disagree with the program
+// (e.g. the sequential fallback when a Function holds a pausing step).
 const runtimeBadge = $('runtime-badge');
 function updateBadge() {
-  runtimeBadge.textContent = ui.editorTab === 'blocks'
-    ? 'Blocks → SPIKE 2 Python'
-    : (isSpike3(pyEditor.value) ? 'SPIKE 3 · real Python' : 'SPIKE 2 · classic API');
+  let text;
+  let parallel = false;
+  if (ui.editorTab === 'blocks') {
+    let mode = { stacks: 0, parallel: false };
+    try { mode = programMode(workspace); } catch { /* workspace mid-mutation */ }
+    parallel = mode.parallel;
+    text = parallel ? `Blocks → SPIKE 2 Python · ${mode.stacks} stacks in parallel` : 'Blocks → SPIKE 2 Python';
+  } else {
+    text = isSpike3(pyEditor.value) ? 'SPIKE 3 · real Python' : 'SPIKE 2 · classic API';
+  }
+  runtimeBadge.textContent = text;
+  runtimeBadge.classList.toggle('parallel', parallel);
 }
 let badgeTimer = 0;
 pyEditor.addEventListener('input', () => {
@@ -220,12 +264,38 @@ function setRunning(next, reason) {
   running = next;
   $('btn-run').disabled = next;
   $('btn-stop').disabled = !next;
+  // While a program runs, the Stop button lights up red (css: body.sim-running).
+  // With parallel forever-stacks a program can run indefinitely, so a clear
+  // "something is alive — here is the off switch" cue matters.
+  document.body.classList.toggle('sim-running', next);
   view2d.setRobotDragEnabled(!next);
   emit('run-state', { running: next, reason });
 }
 
+// ---------- manual drive mode (MoSim-style practice driving) ----------
+const drive = new DriveMode(engine, {
+  isBlocked: () => running,
+  onChange: (active) => {
+    $('btn-drive') && $('btn-drive').classList.toggle('active', active);
+    armMatchClock(active);
+  },
+});
+$('btn-drive') && ($('btn-drive').onclick = () => drive.toggle());
+
+// ---------- match clock (armed by the first Run/drive after a reset) ----------
+let matchStartT = null;
+function armMatchClock(go) {
+  if (go && matchStartT === null) matchStartT = engine.getState().t;
+}
+on('sim-reset', () => { matchStartT = null; });
+
 async function run() {
   if (running) return;
+  drive.deactivate(); // hands off the wheel: programs and manual driving are exclusive
+  armMatchClock(true);
+  // Each program starts from the Build-tab drive config; a previous program's
+  // "set movement motors" override must not leak into this run (either runtime).
+  engine.api.resetDrivePorts();
   let code;
   if (ui.editorTab === 'blocks') {
     try {
@@ -248,6 +318,10 @@ async function run() {
   const res = await runHandle.promise;
   runHandle = null;
   engine.cancelAll('program-end'); // a real hub stops its motors when the program ends
+  // Undo any "set movement motors" override NOW, not just at the next run:
+  // otherwise the Build tab would read (and could Apply/save!) the override,
+  // and 🎮 Drive would steer the wrong wheels until a Reset.
+  engine.api.resetDrivePorts();
   setRunning(false, res.stopped ? 'stopped' : 'finished');
   if (!res.ok) emit('log', { text: res.error, level: 'error' });
   else emit('log', { text: res.stopped ? '— stopped —' : '— finished —', level: 'info' });
@@ -255,6 +329,7 @@ async function run() {
 function stop() {
   if (runHandle) runHandle.stop();
   engine.cancelAll('stop');
+  silenceBeeps();
 }
 $('btn-run').onclick = run;
 $('btn-stop').onclick = stop;
@@ -418,7 +493,15 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.25);
   last = now;
-  engine.step(dt * speed);
+  // engine.step() clamps a single call to 0.25 s of sim time. At high speeds (up
+  // to 8×) or on a slow frame, dt*speed can exceed that, so feed it in chunks
+  // instead of silently dropping the overflow.
+  let simDt = dt * speed;
+  while (simDt > 1e-6) {
+    const chunk = Math.min(simDt, 0.25);
+    engine.step(chunk);
+    simDt -= chunk;
+  }
   if (ui.simTab === '2d') view2d.render();
   requestAnimationFrame(frame);
 }
@@ -459,11 +542,12 @@ function frame(now) {
     activatePythonTab: () => activateEditorTab('python'),
   });
   challenges.loadIndex().catch(() => {});
-  emit('log', { text: 'SpikeSim ready. Drag blocks or write Python, then press Run.', level: 'info' });
+  new MatchHud($('pane-2d'), engine, challenges, () => matchStartT);
+  emit('log', { text: 'SpikeSim ready. Drag blocks or write Python, then press Run — or 🎮 Drive it yourself.', level: 'info' });
   requestAnimationFrame(frame);
   // Warm up the Python runtime while the user reads the screen.
   setTimeout(() => preloadPyodide().catch(() => {}), 2000);
   // Debug/power-user handle (also used by automated tests).
-  window.spikesim = { engine, view2d, view3d, workspace, challenges, builder3d, getSpeed: () => speed };
+  window.spikesim = { engine, view2d, view3d, workspace, challenges, builder3d, drive, getSpeed: () => speed };
   help.showWelcome(); // first-run overlay; no-ops once dismissed (spikesim.seenWelcome)
 })();

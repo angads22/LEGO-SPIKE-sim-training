@@ -1,0 +1,89 @@
+{
+  "blocks": {
+    "languageVersion": 0,
+    "blocks": [
+      {
+        "type": "spike_start",
+        "x": 40,
+        "y": 40,
+        "next": {
+          "block": {
+            "type": "spike_set_movement_motors",
+            "fields": { "LEFT": "A", "RIGHT": "B" },
+            "next": {
+              "block": {
+                "type": "spike_set_move_speed",
+                "inputs": { "PCT": { "shadow": { "type": "math_number", "fields": { "NUM": 45 } } } },
+                "next": {
+                  "block": {
+                    "type": "controls_repeat_ext",
+                    "inputs": {
+                      "TIMES": { "shadow": { "type": "math_number", "fields": { "NUM": 4 } } },
+                      "DO": {
+                        "block": {
+                          "type": "spike_move_cm",
+                          "fields": { "DIR": "FWD" },
+                          "inputs": { "DIST": { "shadow": { "type": "math_number", "fields": { "NUM": 25 } } } },
+                          "next": {
+                            "block": {
+                              "type": "spike_turn",
+                              "fields": { "DIR": "RIGHT" },
+                              "inputs": { "DEG": { "shadow": { "type": "math_number", "fields": { "NUM": 90 } } } }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "next": {
+                      "block": {
+                        "type": "spike_display_image",
+                        "fields": { "IMG": "YES" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "type": "spike_start",
+        "x": 380,
+        "y": 40,
+        "next": {
+          "block": {
+            "type": "controls_repeat_ext",
+            "inputs": {
+              "TIMES": { "shadow": { "type": "math_number", "fields": { "NUM": 8 } } },
+              "DO": {
+                "block": {
+                  "type": "spike_display_image",
+                  "fields": { "IMG": "HEART" },
+                  "next": {
+                    "block": {
+                      "type": "spike_wait_seconds",
+                      "inputs": { "SEC": { "shadow": { "type": "math_number", "fields": { "NUM": 0.3 } } } },
+                      "next": {
+                        "block": {
+                          "type": "spike_display_image",
+                          "fields": { "IMG": "HEART_SMALL" },
+                          "next": {
+                            "block": {
+                              "type": "spike_wait_seconds",
+                              "inputs": { "SEC": { "shadow": { "type": "math_number", "fields": { "NUM": 0.3 } } } }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]
+  }
+}

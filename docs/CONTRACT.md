@@ -218,6 +218,8 @@ promise RESOLVES early (never rejects).
 | `moveStart(steeringPct, speedPct)` | SPIKE steering: `s>=0 → left=v, right=v*(1-s/50)`; mirror for `s<0` |
 | `moveStartTank(leftPct, rightPct)` | |
 | `moveStop()` | both drive motors brake |
+| `setDrivePorts(leftPort, rightPort)` | re-point the movement motors at two motor ports for the rest of the run (both must be motors and differ); supersedes in-flight drive commands. Throws NO_DEVICE / NO_DRIVE like the movement commands |
+| `resetDrivePorts()` | restore the drive ports to the robot's configured (Build-tab) values; `reset()` and the start of each run also restore them |
 | `moveForCm(cm, speedPct, steeringPct=0)` → Promise | distance by **wheel odometry** (average of the two wheels) |
 | `moveTankForCm(cm, leftPct, rightPct)` → Promise | |
 | `turnDegrees(degrees, speedPct)` → Promise | spin in place (tank ±v) until heading delta reached |
@@ -226,7 +228,7 @@ promise RESOLVES early (never rejects).
 | `distanceCm(port)` → number\|null | raycast, max 200cm, null beyond |
 | `colorName(port)` → string | `'none'` if unclear; sample raster 3×3 under sensor, snap to nearest SPIKE color |
 | `reflected(port)` → 0..100 | luminance of sample |
-| `forcePressed(port)` → bool | contact within ~1cm in sensor facing |
+| `forcePressed(port)` → bool | contact on the side the sensor faces — raycast from the body CENTER along `headingDeg + dev.headingDeg` out to `bodyRadius + ~1cm` (a probe from the mount, which sits inside the body radius, could never reach solids the collision system holds at the body edge) |
 | `forceNewtons(port)` → 0..10 | proportional to penetration |
 | `timerSec()` → number / `timerReset()` | sim-time stopwatch |
 | `waitSeconds(sec)` → Promise | sim-time |
@@ -292,8 +294,9 @@ m.get_position()          # 0..359
 m.get_degrees_counted()   # signed, unwrapped
 m.get_speed()             # percent (deg/s ÷ maxDegPerSec × 100, rounded)
 
-mp = MotorPair()                       # defaults to the robot's configured drive ports
-mp = MotorPair('A', 'B')               # explicit is also allowed (validated)
+mp = MotorPair()                       # restores + uses the robot's configured drive ports
+mp = MotorPair('A', 'B')               # points the movement motors at those two ports (reconfigures)
+mp.set_motors('A', 'B')                # same, on an existing pair (the "set movement motors" block)
 mp.move(30, 'cm', steering=0, speed=None)      # units: 'cm','in','rotations','degrees','seconds'
 mp.move_tank(30, 'cm', left_speed=None, right_speed=None)
 mp.start(steering=0, speed=None); mp.start_tank(50, 50); mp.stop()
@@ -339,8 +342,19 @@ generatePython rules:
   ```
   plus one constructor line per port actually used by sensor/motor blocks, scanned from the
   workspace: `motor_c = Motor('C')`, `color_d = ColorSensor('D')`, `distance_e = DistanceSensor('E')`, `force_f = ForceSensor('F')` (variable = `<kind>_<port lowercase>`).
-- Body: only stacks headed by a `spike_start` hat, concatenated in workspace order. Other orphan stacks ignored. No hat → return header + `# add a "when program starts" block`.
+- Body: stacks headed by an enabled `spike_start` hat. Other orphan stacks ignored. No hat → return header + `# add a "when program starts" block`.
+  - **One stack** → its blocks are emitted inline as plain, blocking SPIKE 2 Python (unchanged).
+  - **Two or more stacks** → compile for cooperative multitasking so the stacks run at the same
+    time: each stack becomes a generator function, every pausing step (move/turn/wait/wait_until/
+    beep/motor run-for) is `yield <co_* helper>`, forever/while loops get a `yield co_tick()`, and
+    the program ends with `run_parallel(<stacks>)`. The header then also imports `run_parallel,
+    co_wait, co_wait_until, co_tick` from `spike`. (Skulpt has plain generators but **no
+    `yield from`**, so `run_parallel` drives a per-stack stack of generators by hand.) A program
+    that defines a custom Function containing a pausing step falls back to sequential (one stack
+    after another), since such a Function can't be scheduled cooperatively.
 - Call `generator.init(workspace)` first and include `generator.finish('')` variable preamble if non-empty.
+- `spike_set_movement_motors` ("set movement motors to [LEFT] [RIGHT]", both PORT dropdowns) →
+  `mp.set_motors('<LEFT>', '<RIGHT>')`.
 
 ### Block catalog (exact type names, field/input names, generated Python)
 
@@ -540,7 +554,7 @@ from hub import port
 import runloop, motor_pair
 import color_sensor, color
 
-motor_pair.pair(motor_pair.PAIR_1, port.C, port.D)
+motor_pair.pair(motor_pair.PAIR_1, port.A, port.B)
 DOWN = port.E
 FRONT = port.B
 TARGET = 50
@@ -624,7 +638,7 @@ Implementation:
 | `motor.run_for_degrees(p, degrees, velocity)` awaitable | motorRunForDegrees(p, vel→pct, degrees) |
 | `motor.run_for_time(p, ms, velocity)` awaitable | motorRun + waitSeconds + motorStop |
 | `motor_pair.PAIR_1/2/3` | 0/1/2 |
-| `motor_pair.pair(id, left, right)` | validate: both ports must be the robot's configured drive ports (either order); else friendly RuntimeError naming the configured ports and the Build tab |
+| `motor_pair.pair(id, left, right)` | points the movement motors at those two ports (left arg = left wheel) via `setDrivePorts` — any two distinct motor ports work; friendly error if a port has no motor. Each move on a pair re-points the drive base to that pair's ports when another pair moved in between |
 | `motor_pair.move(id, steering, *, velocity=360)` | moveStart(steering, vel→pct) |
 | `motor_pair.move_tank(id, lv, rv)` | moveStartTank(lv→pct, rv→pct) |
 | `motor_pair.stop(id)` | moveStop() |
@@ -729,3 +743,23 @@ export class ChallengeManager {
 `#tab-blocks #tab-python` (editor tabs) — panes `#blockly-host`, `#python-pane` (contains `#python-editor` textarea + `#python-preview` pre)
 `#tab-2d #tab-3d #tab-build` (sim tabs) — panes `#pane-2d` (contains `#canvas-2d` + `#mapeditor-toolbar`), `#pane-3d` (`#view3d-host`), `#pane-build` (`#builder-host`)
 `#btn-fit #btn-follow #console #hub-display`
+
+## v1.2 — Manual drive mode & match HUD (MoSim-inspired)
+
+- `js/control/drive.js` exports `DriveMode(engine, {isBlocked, onChange})` with
+  `activate()/deactivate()/toggle()` and an `active` flag. While active it turns
+  held keys (W/S/A/D, arrows; Shift = slow) into `engine.api.moveStartTank`
+  targets each animation frame, hard-braking via `moveStop()` when no key is
+  held. Key events on editable targets are ignored; arrows don't scroll the
+  page; a NO_DRIVE robot deactivates with one friendly log line. Activation is
+  refused while `isBlocked()` (a program is running); app.js deactivates drive
+  mode when ▶ Run starts. Wired to the `#btn-drive` toolbar toggle.
+- `js/ui/matchhud.js` exports `MatchHud(host, engine, challenges, getMatchStartT)`
+  — a pointer-events-none overlay in `#pane-2d` showing an FLL match countdown
+  (2:30 of SIM time, red + frozen at 0:00; informational only, never stops the
+  robot) and the active challenge's goals as a live ✔ checklist. The clock arms
+  on the first Run or drive session after a reset (app.js keeps `matchStartT`,
+  cleared on 'sim-reset').
+- `ChallengeManager.getStatus()` (js/ui/challenges.js) returns
+  `{active, name, goals: [{label, done}], done}` — a cheap per-frame snapshot
+  for overlays; goal flags are the same latched values the console ✔ lines use.
